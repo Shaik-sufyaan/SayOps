@@ -13,7 +13,6 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import { useAuth } from "@/lib/auth-context"
-import { fetchAgents } from "@/lib/api-client"
 
 export default function LoginPage() {
   const router = useRouter()
@@ -33,8 +32,7 @@ export default function LoginPage() {
     try {
       await signInWithGoogle()
 
-      const agents = await fetchAgents()
-      router.push(agents.length > 0 ? "/dashboard" : "/create-agent")
+      router.push("/dashboard")
     } catch (err: any) {
       if (err?.code !== "auth/popup-closed-by-user") {
         setError(err.message || "Sign in failed")

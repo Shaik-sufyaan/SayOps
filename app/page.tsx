@@ -6,7 +6,6 @@ import { useState } from "react"
 import { IconBrandGoogle } from "@tabler/icons-react"
 import { Button } from "@/components/ui/button"
 import { useAuth } from "@/lib/auth-context"
-import { fetchAgents } from "@/lib/api-client"
 
 const Silk = dynamic(() => import("@/components/silk"), { ssr: false })
 
@@ -29,13 +28,7 @@ export default function LandingPage() {
     try {
       await signInWithGoogle()
 
-      // Route based on whether they have agents
-      const agents = await fetchAgents()
-      if (agents.length > 0) {
-        router.push("/dashboard")
-      } else {
-        router.push("/create-agent")
-      }
+      router.push("/dashboard")
     } catch (err: any) {
       if (err?.code === "auth/popup-closed-by-user") {
         // User closed the popup, not an error
