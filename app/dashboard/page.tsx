@@ -24,7 +24,7 @@ import { useAuth } from "@/lib/auth-context"
 import { fetchAgents, fetchCalls, fetchStats } from "@/lib/api-client"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
-import type { Agent, CallHistoryEntryWithTurns, DashboardStats } from "@/lib/types"
+import type { Agent, DashboardStats } from "@/lib/types"
 
 function DashboardContent() {
   const searchParams = useSearchParams()
@@ -34,7 +34,7 @@ function DashboardContent() {
   const agentId = searchParams.get("agent") || ""
 
   const [agents, setAgents] = useState<Agent[]>([])
-  const [calls, setCalls] = useState<CallHistoryEntryWithTurns[]>([])
+  const [calls, setCalls] = useState<any[]>([])
   const [stats, setStats] = useState<DashboardStats | null>(null)
   const [loading, setLoading] = useState(true)
 
@@ -55,12 +55,6 @@ function DashboardContent() {
           fetchAgents(),
           fetchStats(),
         ])
-
-        // Redirect to create-agent if user has no agents
-        if (agentsData.length === 0) {
-          router.push("/create-agent")
-          return
-        }
 
         setAgents(agentsData)
         setStats(statsData)
@@ -117,6 +111,31 @@ function DashboardContent() {
             </Button>
           </div>
 
+          {/* Empty state when no agents */}
+          {agents.length === 0 && (
+            <Card>
+              <CardHeader className="text-center py-12">
+                <div className="flex justify-center mb-4">
+                  <div className="flex size-14 items-center justify-center rounded-xl bg-muted">
+                    <IconRobot className="size-7 text-muted-foreground" />
+                  </div>
+                </div>
+                <CardTitle>No agents yet</CardTitle>
+                <CardDescription className="mt-2">
+                  Create your first AI agent to start handling customer conversations.
+                </CardDescription>
+                <div className="mt-4">
+                  <Button asChild>
+                    <Link href="/create-agent">
+                      <IconPlus className="size-4 mr-2" />
+                      Create Your First Agent
+                    </Link>
+                  </Button>
+                </div>
+              </CardHeader>
+            </Card>
+          )}
+
           {/* Agent Status Card */}
           {selectedAgent && (
             <Card>
@@ -145,7 +164,7 @@ function DashboardContent() {
           {stats && <SectionCards stats={stats} agents={agents} />}
 
           {/* Call Volume Chart */}
-          {stats && <ChartAreaInteractive data={stats.calls_per_day} agents={agents} />}
+          {stats && <ChartAreaInteractive data={stats.messages_per_day ?? []} agents={agents} />}
 
           {/* Recent Calls */}
           <CallHistoryTable calls={calls.slice(0, 5)} />

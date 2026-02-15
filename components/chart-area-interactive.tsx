@@ -67,7 +67,7 @@ export function ChartAreaInteractive({
     }
   })
 
-  const filteredData = data.filter((item) => {
+  const filteredData = (data ?? []).filter((item) => {
     const date = new Date(item.date)
     const now = new Date()
     let daysToSubtract = 30

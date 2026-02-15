@@ -139,9 +139,9 @@ export async function fetchDocuments(): Promise<UserDocument[]> {
 // ---- Conversations & Messages ----
 
 export async function fetchConversations(agentId?: string): Promise<Conversation[]> {
-  const endpoint = agentId ? `/agents/${agentId}/conversations` : "/conversations"
+  const endpoint = agentId ? `/conversations?agentId=${agentId}` : "/conversations"
   const res = await apiFetch<{ conversations: Conversation[] }>(endpoint)
-  return res.conversations
+  return res.conversations ?? []
 }
 
 export async function fetchMessages(conversationId: string): Promise<Message[]> {

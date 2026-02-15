@@ -54,7 +54,7 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
   React.useEffect(() => {
     if (user) {
       fetchConversations("super").then(convs => {
-        setSessions(convs.filter(c => c.member_id))
+        setSessions((convs ?? []).filter(c => c.member_id))
       }).catch(console.error)
     }
   }, [user])
