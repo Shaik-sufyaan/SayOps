@@ -30,25 +30,15 @@ import type { Agent } from "@/lib/types"
 import { toast } from "sonner"
 
 function formatPhoneForDisplay(phone: string | null): string {
-  if (phone) {
-    const digits = phone.replace(/\D/g, "")
-    if (digits.length === 11 && digits[0] === "1") {
-      const area = digits.slice(1, 4)
-      const mid = digits.slice(4, 7)
-      const end = digits.slice(7)
-      return `(${area}) ${mid}-${end}`
-    }
-    return phone
+  if (!phone) return "No number assigned"
+  const digits = phone.replace(/\D/g, "")
+  if (digits.length === 11 && digits[0] === "1") {
+    const area = digits.slice(1, 4)
+    const mid = digits.slice(4, 7)
+    const end = digits.slice(7)
+    return `(${area}) ${mid}-${end}`
   }
-  return generateDisplayPhoneNumber()
-}
-
-function generateDisplayPhoneNumber(): string {
-  const areaCodes = [212, 310, 415, 512, 619, 720, 813, 917, 503, 704]
-  const area = areaCodes[Math.floor(Math.random() * areaCodes.length)]
-  const mid = Math.floor(Math.random() * 900) + 100
-  const end = Math.floor(Math.random() * 9000) + 1000
-  return `(${area}) ${mid}-${end}`
+  return phone
 }
 
 export default function CreateAgentPage() {

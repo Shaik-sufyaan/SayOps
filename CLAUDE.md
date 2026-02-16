@@ -27,14 +27,14 @@ npm run lint                   # Run ESLint
 
 ### Repository Structure
 ```
-SayOps/
+SpeakOps/
 ├── app/                       # Next.js App Router
 │   ├── (auth)/                # Auth related pages (login, signup)
 │   ├── assistant/             # Business Assistant strategy sessions
 │   ├── dashboard/             # Main dashboard analytics
 │   ├── history/               # Call history with audio playback
 │   ├── documents/             # Knowledge base management
-│   ├── create-agent/         # Simple agent creation wizard
+│   ├── create-agent/         # Agent creation wizard (provisions real Twilio number)
 │   └── layout.tsx            # Global layout with ThemeProvider and SuperAgent widget
 ├── components/               # UI components
 │   ├── ui/                   # shadcn/ui primitives
@@ -53,6 +53,8 @@ SayOps/
 - **Naming:** Be direct and intuitive (e.g., "Create Agent" instead of "Quick Create").
 - **Navigation:** Use Next.js `Link` for all internal routing.
 - **Audio:** Call recordings are mulaw 8kHz from GCS, streamed via signed URLs.
+- **Phone numbers:** Real Twilio toll-free numbers provisioned by the backend. Frontend displays `agent.phone_number` from the API response — never generates fake numbers. Shows "No number assigned" when `phone_number` is null.
+- **No Twilio operations in frontend.** All phone provisioning, release, and webhook config is handled by `zl-backend`.
 
 ## Environment Variables
 - `AGENT_BACKEND_URL`: URL of `zl-backend` (usually http://localhost:3001)
