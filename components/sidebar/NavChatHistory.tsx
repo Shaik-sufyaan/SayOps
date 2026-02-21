@@ -1,11 +1,7 @@
 "use client"
 
 import * as React from "react"
-<<<<<<< HEAD
-import { IconMessage, IconClock, IconSearch, IconX, IconPlus } from "@tabler/icons-react"
-=======
-import { IconMessage, IconClock, IconPlus } from "@tabler/icons-react"
->>>>>>> 2641e0d0fff18614f01abf8da5c3dcd04cfbfdc8
+import { IconMessage, IconPlus } from "@tabler/icons-react"
 import Link from "next/link"
 import {
   SidebarMenu,
@@ -29,16 +25,10 @@ function formatRelativeDate(dateStr: string): string {
 }
 
 export function NavChatHistory() {
-<<<<<<< HEAD
-  const [chats, setChats] = React.useState<ChatSession[]>([])
-  const [isSearchOpen, setIsSearchOpen] = React.useState(false)
-  const [searchQuery, setSearchQuery] = React.useState("")
-=======
   const { user } = useAuth()
   const { sections } = useSidebarStore()
   const { evaConversations, fetchEvaConversations, loading } = useConversationsStore()
   const searchQuery = sections.evaChat?.searchQuery || ""
->>>>>>> 2641e0d0fff18614f01abf8da5c3dcd04cfbfdc8
 
   React.useEffect(() => {
     if (user) {
@@ -55,49 +45,7 @@ export function NavChatHistory() {
 
   const displayConversations = filteredConversations.slice(0, 5)
 
-  const filteredChats = chats.filter(c =>
-    c.title.toLowerCase().includes(searchQuery.toLowerCase())
-  )
-
   return (
-<<<<<<< HEAD
-    <SidebarGroup className="group-data-[collapsible=icon]:hidden">
-      <SidebarGroupLabel className="flex items-center justify-between">
-        History
-        <div className="flex items-center gap-1">
-          <button
-            onClick={() => {
-              setIsSearchOpen(!isSearchOpen)
-              setSearchQuery("")
-            }}
-            className="text-muted-foreground hover:text-foreground"
-          >
-            {isSearchOpen
-              ? <IconX className="size-3.5" />
-              : <IconSearch className="size-3.5" />}
-          </button>
-          <Link href="/chat" className="text-muted-foreground hover:text-foreground">
-            <IconPlus className="size-3.5" />
-          </Link>
-        </div>
-      </SidebarGroupLabel>
-
-      {isSearchOpen && (
-        <div className="px-2 pb-1">
-          <input
-            autoFocus
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search chats..."
-            className="w-full rounded-md bg-muted px-2 py-1 text-xs outline-none placeholder:text-muted-foreground"
-          />
-        </div>
-      )}
-
-      <SidebarGroupContent>
-        <SidebarMenu>
-          {filteredChats.map((chat) => (
-=======
     <NavSection
       id="evaChat"
       title="Eva Chats"
@@ -121,7 +69,6 @@ export function NavChatHistory() {
           </SidebarMenuItem>
         ) : displayConversations.length > 0 ? (
           displayConversations.map((chat) => (
->>>>>>> 2641e0d0fff18614f01abf8da5c3dcd04cfbfdc8
             <SidebarMenuItem key={chat.id}>
               <SidebarMenuButton asChild>
                 <Link href={`/chat/${chat.id}`}>
@@ -141,14 +88,6 @@ export function NavChatHistory() {
             <span className="text-xs text-muted-foreground px-2">No chats yet</span>
           </SidebarMenuItem>
         )}
-        <SidebarMenuItem>
-          <SidebarMenuButton asChild className="text-muted-foreground">
-            <Link href="/chat/new">
-              <IconPlus className="size-4" />
-              <span>New Chat</span>
-            </Link>
-          </SidebarMenuButton>
-        </SidebarMenuItem>
       </SidebarMenu>
     </NavSection>
   )
