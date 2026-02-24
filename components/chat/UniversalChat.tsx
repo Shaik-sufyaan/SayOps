@@ -309,9 +309,9 @@ export function UniversalChat({
           </div>
         ) : (
           <div className="space-y-4">
-            {messages.map((msg) => (
+            {messages.map((msg, i) => (
               <ChatMessage
-                key={msg.timestamp || Math.random()}
+                key={`${(msg as any).id || msg.timestamp || 'msg'}-${i}`}
                 role={msg.role}
                 content={msg.content}
                 timestamp={msg.timestamp}

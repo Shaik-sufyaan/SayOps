@@ -242,8 +242,41 @@ export async function fetchEvaConversations(): Promise<Conversation[]> {
 }
 
 export async function fetchMessages(conversationId: string): Promise<Message[]> {
-  const res = await apiFetch<{ messages: Message[] }>(`/conversations/${conversationId}/messages`)
-  return res.messages
+  const res = await apiFetch<{ messages: any[] }>(`/conversations/${conversationId}/messages`)
+  
+  return res.messages.map(m => {
+    let parsedToolCalls = m.tool_calls
+    if (typeof parsedToolCalls === 'string') {
+      try {
+        parsedToolCalls = JSON.parse(parsedToolCalls)
+      } catch (e) {
+        // keep as is
+      }
+    }
+    
+    let parsedToolResult = m.tool_result
+    if (typeof parsedToolResult === 'string') {
+      try {
+        parsedToolResult = JSON.parse(parsedToolResult)
+      } catch (e) {
+        // keep as is
+      }
+    }
+
+    // Double check if tool_calls is still a string (double encoded)
+    if (typeof parsedToolCalls === 'string') {
+      try { parsedToolCalls = JSON.parse(parsedToolCalls) } catch(e) {}
+    }
+    if (typeof parsedToolResult === 'string') {
+      try { parsedToolResult = JSON.parse(parsedToolResult) } catch(e) {}
+    }
+    
+    return {
+      ...m,
+      tool_calls: Array.isArray(parsedToolCalls) ? parsedToolCalls : null,
+      tool_result: parsedToolResult
+    }
+  }) as Message[]
 }
 
 export async function fetchRecordingUrl(conversationId: string): Promise<string> {
