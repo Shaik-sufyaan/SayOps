@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { chatWithAgent, fetchMessages } from '@/lib/api-client'
+import { useConversationsStore } from './conversationsStore'
 
 export interface EvaMessage {
   id: string
@@ -233,6 +234,9 @@ async function processMessage(
       isLoading: false,
       pendingNavigation,
     }))
+
+    // Bust the cache so the sidebar immediately shows the updated chat
+    useConversationsStore.getState().invalidateAndRefetch()
   } catch (err) {
     const errorMsg: EvaMessage = {
       id: generateId(),
