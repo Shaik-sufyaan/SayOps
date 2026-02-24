@@ -6,7 +6,7 @@ import { useAuth } from "@/lib/auth-context"
 import { chatWithAgent, fetchMessages } from "@/lib/api-client"
 import { UniversalChat, type ChatMessageProps } from "@/components/chat"
 import { Spinner } from "@/components/ui/spinner"
-import { useConversationsStore } from "@/stores"
+import { useConversationsStore, useEvaChatStore } from "@/stores"
 
 export default function ChatPage() {
   const { conversationId } = useParams()
@@ -25,7 +25,19 @@ export default function ChatPage() {
     }
 
     if (conversationId && conversationId !== "new") {
-      loadMessages()
+      // Check if the store already has messages for this conversation (e.g. coming from mini widget)
+      const { conversationId: storeConvId, messages: storeMessages } = useEvaChatStore.getState()
+      if (storeConvId === conversationId && storeMessages.length > 0) {
+        setMessages(storeMessages.map((m) => ({
+          role: m.role,
+          content: m.content,
+          timestamp: m.timestamp,
+          toolCalls: m.toolCalls,
+        })))
+        setLoading(false)
+      } else {
+        loadMessages()
+      }
     } else {
       setLoading(false)
     }

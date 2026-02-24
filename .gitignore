@@ -38,3 +38,4 @@ Dockerfile.dev
 ARCHITECTURE_SAYOPS.md
 GOVERNANCE_SAYOPS.md
 package-lock.json
+CLAUDE.md
