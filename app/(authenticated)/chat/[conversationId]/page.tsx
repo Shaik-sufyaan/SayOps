@@ -102,10 +102,15 @@ export default function ChatPage() {
             timestamp: m.timestamp || Date.now(),
             toolCalls: m.toolCalls?.map((t) => ({
               ...t,
+              args: t.args || {},
+              status: t.status || 'completed',
               result: response.toolCalls?.find((tc) => tc.name === t.name)?.result,
             })),
           }))
-          loadConversation(resolvedId, evaMessages)
+          
+          setTimeout(() => {
+            loadConversation(resolvedId, evaMessages)
+          }, 0)
 
           return updated
         })
