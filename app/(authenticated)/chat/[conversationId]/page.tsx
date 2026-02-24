@@ -117,8 +117,10 @@ export default function ChatPage() {
 
         if (conversationId === "new" && response.conversationId) {
           router.replace(`/chat/${response.conversationId}`)
-          invalidateAndRefetch()
         }
+        
+        // Bust the cache so the sidebar immediately bumps this chat to the top
+        invalidateAndRefetch()
       } catch (err) {
         console.error("Chat failed", err)
         const errorMsg: ChatMessageProps = {
