@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { useSearchParams, useRouter, usePathname } from "next/navigation"
-import { fetchIntegrations, getIntegrationConnectUrl, disconnectIntegration } from "@/lib/api-client"
+import { fetchIntegrations, getIntegrationConnectUrl, disconnectIntegration, connectWhatsApp, connectTelegram } from "@/lib/api-client"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { IconBrandGoogle, IconBrandGoogleHome, IconPlug, IconBrandMessenger, IconBrandWhatsapp, IconBrandTelegram } from "@tabler/icons-react"
@@ -116,9 +116,41 @@ export function IntegrationsPanel() {
       .finally(() => setLoading(false))
   }
 
-  const handleConnect = async (connectProvider: 'google' | 'gmail' | 'facebook' | 'hubspot') => {
+  const handleConnect = async (connectProvider: 'google' | 'gmail' | 'facebook' | 'hubspot' | 'whatsapp' | 'telegram') => {
+    if (connectProvider === 'whatsapp') {
+      const phoneNumberId = prompt("Enter WhatsApp Phone Number ID:")
+      const wabaId = prompt("Enter WhatsApp Business Account ID:")
+      const phoneNumber = prompt("Enter Display Phone Number:")
+      const accessToken = prompt("Enter Permanent Access Token:")
+      
+      if (phoneNumberId && wabaId && phoneNumber && accessToken) {
+        try {
+          await connectWhatsApp({ phoneNumberId, wabaId, phoneNumber, accessToken })
+          toast({ title: "Connected", description: "WhatsApp connected successfully!" })
+          loadIntegrations()
+        } catch (err: any) {
+          toast({ title: "Error", description: err.message, variant: "destructive" })
+        }
+      }
+      return
+    }
+
+    if (connectProvider === 'telegram') {
+      const botToken = prompt("Enter Telegram Bot Token:")
+      if (botToken) {
+        try {
+          await connectTelegram(botToken)
+          toast({ title: "Connected", description: "Telegram connected successfully!" })
+          loadIntegrations()
+        } catch (err: any) {
+          toast({ title: "Error", description: err.message, variant: "destructive" })
+        }
+      }
+      return
+    }
+
     try {
-      const url = await getIntegrationConnectUrl(connectProvider)
+      const url = await getIntegrationConnectUrl(connectProvider as any)
       window.location.href = url
     } catch (err) {
       toast({ title: "Error", description: "Failed to get connection URL.", variant: "destructive" })
