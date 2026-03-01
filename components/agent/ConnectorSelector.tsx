@@ -3,7 +3,7 @@
 import React from "react"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Label } from "@/components/ui/label"
-import { IconBrandGoogle, IconPlug, IconMail } from "@tabler/icons-react"
+import { IconBrandGoogle, IconPlug, IconMail, IconCreditCard } from "@tabler/icons-react"
 
 export const AVAILABLE_CONNECTORS = [
   {
@@ -26,6 +26,13 @@ export const AVAILABLE_CONNECTORS = [
     description: "Sync contacts and deals",
     icon: IconPlug,
     color: "text-orange-500",
+  },
+  {
+    id: "stripe_payments",
+    name: "Stripe Payments",
+    description: "Accept payments from customers",
+    icon: IconCreditCard,
+    color: "text-violet-500",
   },
 ]
 

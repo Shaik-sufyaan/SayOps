@@ -7,6 +7,7 @@ const VIEW_MAP: Record<string, string> = {
   '/integrations': 'integrations',
   '/settings': 'settings',
   '/create-agent': 'create-agent',
+  '/payments': 'payments',
 }
 
 export function middleware(request: NextRequest) {
@@ -55,6 +56,7 @@ export const config = {
     '/integrations',
     '/settings',
     '/create-agent',
+    '/payments',
     '/agents/:path*',
     '/chat/:path*',
   ],

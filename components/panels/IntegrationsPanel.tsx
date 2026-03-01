@@ -2,10 +2,10 @@
 
 import { useEffect, useState } from "react"
 import { useSearchParams, useRouter, usePathname } from "next/navigation"
-import { fetchIntegrations, getIntegrationConnectUrl, disconnectIntegration, connectWhatsApp, connectTelegram } from "@/lib/api-client"
+import { fetchIntegrations, getIntegrationConnectUrl, disconnectIntegration, connectWhatsApp, connectTelegram, getStripeConnectUrl, disconnectStripe, fetchStripeConnectStatus } from "@/lib/api-client"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { IconBrandGoogle, IconBrandGoogleHome, IconPlug, IconBrandMessenger, IconBrandWhatsapp, IconBrandTelegram } from "@tabler/icons-react"
+import { IconBrandGoogle, IconBrandGoogleHome, IconPlug, IconBrandMessenger, IconBrandWhatsapp, IconBrandTelegram, IconCreditCard } from "@tabler/icons-react"
 import { Spinner } from "@/components/ui/spinner"
 import { toast } from "@/components/ui/use-toast"
 
@@ -58,6 +58,14 @@ const AVAILABLE_INTEGRATIONS = [
     connectProvider: 'telegram' as const,
     comingSoon: false,
   },
+  {
+    provider: 'stripe_connect',
+    label: 'Stripe Payments',
+    description: 'Accept payments from customers. Connect your Stripe account to let agents send payment links and invoices.',
+    icon: 'stripe',
+    connectProvider: 'stripe' as const,
+    comingSoon: false,
+  },
 ]
 
 export function IntegrationsPanel() {
@@ -66,12 +74,14 @@ export function IntegrationsPanel() {
   const pathname = usePathname()
   const [connectedProviders, setConnectedProviders] = useState<Record<string, any>>({})
   const [loading, setLoading] = useState(true)
+  const [stripeConnecting, setStripeConnecting] = useState(false)
 
   // Handle OAuth callback query params
   useEffect(() => {
     const googleConnected = searchParams.get("google_connected")
     const gmailConnected = searchParams.get("gmail_connected")
     const facebookConnected = searchParams.get("facebook_connected")
+    const stripeConnected = searchParams.get("stripe_connected")
     const error = searchParams.get("error")
 
     if (googleConnected) {
@@ -83,6 +93,10 @@ export function IntegrationsPanel() {
     } else if (facebookConnected) {
       toast({ title: "Facebook Messenger connected successfully!" })
       cleanOAuthParams()
+    } else if (stripeConnected) {
+      toast({ title: "Stripe account connected successfully!" })
+      cleanOAuthParams()
+      loadIntegrations()
     } else if (error) {
       toast({ title: "Integration failed", description: error, variant: "destructive" })
       cleanOAuthParams()
@@ -93,6 +107,8 @@ export function IntegrationsPanel() {
     const params = new URLSearchParams(searchParams.toString())
     params.delete("google_connected")
     params.delete("gmail_connected")
+    params.delete("facebook_connected")
+    params.delete("stripe_connected")
     params.delete("error")
     const qs = params.toString()
     router.replace(`${pathname}${qs ? '?' + qs : ''}`, { scroll: false })
@@ -104,11 +120,17 @@ export function IntegrationsPanel() {
 
   const loadIntegrations = () => {
     setLoading(true)
-    fetchIntegrations()
-      .then((data) => {
+    Promise.all([
+      fetchIntegrations(),
+      fetchStripeConnectStatus(),
+    ])
+      .then(([data, stripeStatus]) => {
         const connected: Record<string, any> = {}
         for (const integration of data || []) {
           connected[integration.provider] = integration
+        }
+        if (stripeStatus.connected) {
+          connected['stripe_connect'] = { provider: 'stripe_connect', ...stripeStatus }
         }
         setConnectedProviders(connected)
       })
@@ -116,7 +138,19 @@ export function IntegrationsPanel() {
       .finally(() => setLoading(false))
   }
 
-  const handleConnect = async (connectProvider: 'google' | 'gmail' | 'facebook' | 'hubspot' | 'whatsapp' | 'telegram') => {
+  const handleConnect = async (connectProvider: 'google' | 'gmail' | 'facebook' | 'hubspot' | 'whatsapp' | 'telegram' | 'stripe') => {
+    if (connectProvider === 'stripe') {
+      setStripeConnecting(true)
+      try {
+        const url = await getStripeConnectUrl()
+        window.location.href = url
+      } catch (err: any) {
+        toast({ title: "Error", description: err.message || "Failed to get Stripe connect URL.", variant: "destructive" })
+        setStripeConnecting(false)
+      }
+      return
+    }
+
     if (connectProvider === 'whatsapp') {
       const phoneNumberId = prompt("Enter WhatsApp Phone Number ID:")
       const wabaId = prompt("Enter WhatsApp Business Account ID:")
@@ -159,7 +193,11 @@ export function IntegrationsPanel() {
 
   const handleDisconnect = async (provider: string) => {
     try {
-      await disconnectIntegration(provider)
+      if (provider === 'stripe_connect') {
+        await disconnectStripe()
+      } else {
+        await disconnectIntegration(provider)
+      }
       toast({ title: "Disconnected", description: "Successfully disconnected." })
       loadIntegrations()
     } catch (err) {
@@ -175,6 +213,7 @@ export function IntegrationsPanel() {
       case "facebook": return <IconBrandMessenger className="size-8 text-blue-500" />
       case "whatsapp": return <IconBrandWhatsapp className="size-8 text-green-500" />
       case "telegram": return <IconBrandTelegram className="size-8 text-sky-500" />
+      case "stripe": return <IconCreditCard className="size-8 text-violet-500" />
       default: return <IconBrandGoogle className="size-8" />
     }
   }
@@ -227,8 +266,12 @@ export function IntegrationsPanel() {
                     Disconnect
                   </Button>
                 ) : (
-                  <Button className="w-full" onClick={() => handleConnect(integration.connectProvider!)}>
-                    Connect
+                  <Button
+                    className="w-full"
+                    disabled={integration.provider === 'stripe_connect' && stripeConnecting}
+                    onClick={() => handleConnect(integration.connectProvider!)}
+                  >
+                    {integration.provider === 'stripe_connect' && stripeConnecting ? "Redirecting..." : "Connect"}
                   </Button>
                 )}
               </CardFooter>

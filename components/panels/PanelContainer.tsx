@@ -12,6 +12,7 @@ import { IntegrationsPanel } from "./IntegrationsPanel"
 import { SettingsPanel } from "./SettingsPanel"
 import { AgentDetailPanel } from "./AgentDetailPanel"
 import { CreateAgentPanel } from "./CreateAgentPanel"
+import { PaymentsPanel } from "./PaymentsPanel"
 
 function PanelContainerInner() {
   const { view, agentId } = useViewParams()
@@ -61,6 +62,9 @@ function PanelContainerInner() {
       </Panel>
       <Panel active={view === "create-agent"} visited={visited.has("create-agent")}>
         <CreateAgentPanel />
+      </Panel>
+      <Panel active={view === "payments"} visited={visited.has("payments")}>
+        <PaymentsPanel />
       </Panel>
     </>
   )
