@@ -4,7 +4,9 @@ import * as React from "react"
 import {
   IconUserPlus,
   IconMail,
-  IconUsers
+  IconUsers,
+  IconCreditCard,
+  IconExternalLink,
 } from "@tabler/icons-react"
 import { toast } from "sonner"
 
@@ -13,6 +15,7 @@ import {
   Card,
   CardContent,
   CardDescription,
+  CardFooter,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
@@ -24,17 +27,30 @@ import {
   createOrgInvite,
   fetchOrgInvites,
   fetchOrgMembers,
+  fetchBillingStatus,
+  createBillingCheckout,
+  createBillingPortal,
 } from "@/lib/api-client"
 import { useAuth } from "@/lib/auth-context"
-import { OrgInvite, OrgMember } from "@/lib/types"
+import { OrgInvite, OrgMember, BillingStatus } from "@/lib/types"
+
+const TIER_LABELS: Record<string, string> = {
+  free: 'Free',
+  starter: 'Starter',
+  pro: 'Pro',
+  enterprise: 'Enterprise',
+}
+
 
 export function SettingsPanel() {
   const { user, loading: authLoading } = useAuth()
   const [invites, setInvites] = React.useState<OrgInvite[]>([])
   const [members, setMembers] = React.useState<OrgMember[]>([])
+  const [billing, setBilling] = React.useState<BillingStatus | null>(null)
   const [loading, setLoading] = React.useState(true)
   const [inviteEmail, setInviteEmail] = React.useState("")
   const [isInviting, setIsInviting] = React.useState(false)
+  const [billingLoading, setBillingLoading] = React.useState(false)
 
   React.useEffect(() => {
     if (authLoading || !user) return
@@ -44,16 +60,41 @@ export function SettingsPanel() {
   const loadData = async () => {
     try {
       setLoading(true)
-      const [inviteData, memberData] = await Promise.all([
+      const [inviteData, memberData, billingData] = await Promise.all([
         fetchOrgInvites(),
-        fetchOrgMembers()
+        fetchOrgMembers(),
+        fetchBillingStatus(),
       ])
       setInvites(inviteData)
       setMembers(memberData)
+      setBilling(billingData)
     } catch (err) {
       toast.error("Failed to load organization settings")
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleUpgrade = async (tier: 'pro' | 'enterprise') => {
+    setBillingLoading(true)
+    try {
+      const url = await createBillingCheckout(tier)
+      window.location.href = url
+    } catch (err: any) {
+      toast.error(err.message || "Failed to start checkout")
+      setBillingLoading(false)
+    }
+  }
+
+  const handleManageBilling = async () => {
+    setBillingLoading(true)
+    try {
+      const url = await createBillingPortal()
+      window.open(url, '_blank')
+    } catch (err: any) {
+      toast.error(err.message || "Failed to open billing portal")
+    } finally {
+      setBillingLoading(false)
     }
   }
 
@@ -83,6 +124,60 @@ export function SettingsPanel() {
           Manage your team members and organization settings.
         </p>
       </div>
+
+      <Separator />
+
+      <section className="space-y-4">
+        <div className="flex items-center gap-2 mb-2">
+          <IconCreditCard className="size-5 text-primary" />
+          <h2 className="text-xl font-semibold">Subscription & Billing</h2>
+        </div>
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <div>
+                <CardTitle className="text-lg">Current Plan</CardTitle>
+                <CardDescription>Manage your SpeakOps subscription.</CardDescription>
+              </div>
+              {billing && (
+                <Badge variant={billing.tier === 'free' ? 'outline' : 'default'} className="capitalize text-sm px-3 py-1">
+                  {TIER_LABELS[billing.tier] ?? billing.tier}
+                </Badge>
+              )}
+            </div>
+          </CardHeader>
+          <CardContent>
+            {billing?.tier === 'free' ? (
+              <p className="text-sm text-muted-foreground">
+                You are on the <strong>Free</strong> plan. Upgrade to unlock more agents, channels, and higher usage limits.
+              </p>
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                You are on the <strong>{TIER_LABELS[billing?.tier ?? 'free']}</strong> plan.
+                Manage your subscription, download invoices, or update payment details below.
+              </p>
+            )}
+          </CardContent>
+          <CardFooter className="flex flex-wrap gap-2">
+            {billing?.tier === 'free' && (
+              <>
+                <Button onClick={() => handleUpgrade('pro')} disabled={billingLoading}>
+                  Upgrade to Pro
+                </Button>
+                <Button variant="outline" onClick={() => handleUpgrade('enterprise')} disabled={billingLoading}>
+                  Upgrade to Enterprise
+                </Button>
+              </>
+            )}
+            {billing?.hasStripeCustomer && (
+              <Button variant="outline" onClick={handleManageBilling} disabled={billingLoading}>
+                <IconExternalLink className="mr-2 size-4" />
+                {billingLoading ? "Opening..." : "Manage Billing"}
+              </Button>
+            )}
+          </CardFooter>
+        </Card>
+      </section>
 
       <Separator />
 

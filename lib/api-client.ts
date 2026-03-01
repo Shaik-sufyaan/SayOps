@@ -1,15 +1,18 @@
 import { auth } from "@/lib/firebase"
-import type { 
-  Agent, 
-  Conversation, 
-  Message, 
-  DashboardStats, 
+import type {
+  Agent,
+  Conversation,
+  Message,
+  DashboardStats,
   UserDocument,
   ChatResponse,
   OrgMember,
   Organization,
   OrgInvite,
-  MessagePart
+  MessagePart,
+  StripePayment,
+  BusinessSettings,
+  BillingStatus,
 } from "@/lib/types"
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || process.env.AGENT_BACKEND_URL || "http://localhost:3001"
@@ -424,6 +427,90 @@ export async function acceptInvite(token: string): Promise<any> {
   return apiFetch<any>(`/org/invites/${token}/accept`, {
     method: "POST",
   })
+}
+
+// ---- Stripe Connect ----
+
+export async function getStripeConnectUrl(): Promise<string> {
+  const res = await apiFetch<{ url: string }>("/integrations/stripe/connect")
+  return res.url
+}
+
+export async function disconnectStripe(): Promise<void> {
+  await apiFetch<{ success: boolean }>("/integrations/stripe", {
+    method: "DELETE",
+  })
+}
+
+export async function fetchStripeConnectStatus(): Promise<{ connected: boolean; account_id?: string; livemode?: boolean }> {
+  try {
+    return await apiFetch<{ connected: boolean; account_id?: string; livemode?: boolean }>("/integrations/stripe/status")
+  } catch {
+    return { connected: false }
+  }
+}
+
+// ---- Payments ----
+
+export async function fetchPayments(limit = 50, offset = 0): Promise<StripePayment[]> {
+  try {
+    const res = await apiFetch<{ payments: StripePayment[] }>(`/payments?limit=${limit}&offset=${offset}`)
+    return res.payments || []
+  } catch {
+    return []
+  }
+}
+
+export async function refundPayment(paymentId: string, amount?: number, reason?: string): Promise<{ success: boolean; refund: any }> {
+  return apiFetch<{ success: boolean; refund: any }>(`/payments/${paymentId}/refund`, {
+    method: "POST",
+    body: JSON.stringify({ amount, reason }),
+  })
+}
+
+// ---- Business Settings ----
+
+export async function fetchBusinessSettings(): Promise<BusinessSettings | null> {
+  try {
+    const res = await apiFetch<{ settings: BusinessSettings | null }>("/business-settings")
+    return res.settings
+  } catch {
+    return null
+  }
+}
+
+export async function updateBusinessSettings(settings: Partial<Omit<BusinessSettings, 'id' | 'organization_id' | 'created_at' | 'updated_at'>>): Promise<BusinessSettings> {
+  const res = await apiFetch<{ settings: BusinessSettings }>("/business-settings", {
+    method: "PUT",
+    body: JSON.stringify(settings),
+  })
+  return res.settings
+}
+
+// ---- Platform Billing ----
+
+export async function fetchBillingStatus(): Promise<BillingStatus | null> {
+  try {
+    const res = await apiFetch<BillingStatus>("/billing/status")
+    return res
+  } catch {
+    return null
+  }
+}
+
+export async function createBillingCheckout(tier: 'starter' | 'pro' | 'enterprise'): Promise<string> {
+  const res = await apiFetch<{ url: string }>("/billing/checkout", {
+    method: "POST",
+    body: JSON.stringify({ tier }),
+  })
+  return res.url
+}
+
+export async function createBillingPortal(): Promise<string> {
+  const res = await apiFetch<{ url: string }>("/billing/portal", {
+    method: "POST",
+  })
+  return res.url
 }
 
 // ---- Stats (To be implemented in backend if missing) ----
