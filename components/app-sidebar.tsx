@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { IconGripVertical, IconLayoutSidebarLeftCollapse, IconLayoutSidebarLeftExpand, IconX, IconMenu2 } from "@tabler/icons-react"
+import { IconGripVertical, IconLayoutSidebarLeftCollapse, IconLayoutSidebarLeftExpand, IconX, IconMenu2, IconCreditCard } from "@tabler/icons-react"
 import { NavUser } from "@/components/nav-user"
 import { ThemeToggle } from "@/components/theme-toggle"
 import {
@@ -155,6 +155,14 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
               <NavCallHistory />
               <NavDocuments />
               <div className="mt-auto">
+                <SidebarMenu className="px-2 pb-1">
+                  <SidebarMenuItem>
+                    <SidebarMenuButton onClick={() => setView("payments")} className="gap-2">
+                      <IconCreditCard className="size-4 text-violet-500" />
+                      <span>Payments</span>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                </SidebarMenu>
                 <NavIntegrations />
               </div>
             </SidebarContent>

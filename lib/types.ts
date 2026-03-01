@@ -4,7 +4,7 @@ export interface Organization {
   id: string
   name: string
   owner_user_id: string
-  subscription_tier: 'free' | 'pro' | 'enterprise'
+  subscription_tier: 'free' | 'starter' | 'pro' | 'enterprise'
   created_at: string
   updated_at: string
 }
@@ -147,6 +147,68 @@ export interface DashboardStats {
     calls: number
     messages: number
   }
+}
+
+// Stripe / Payments
+
+export interface StripeConnectAccount {
+  id: string
+  organization_id: string
+  stripe_account_id: string
+  livemode: boolean
+  account_status: 'active' | 'deauthorized'
+  created_at: string
+  updated_at: string
+}
+
+export interface StripePayment {
+  id: string
+  organization_id: string
+  amount: number
+  currency: string
+  description: string | null
+  payment_url: string | null
+  customer_id: string | null
+  customer_email: string | null
+  customer_name: string | null
+  call_id: string | null
+  channel: string | null
+  agent_id: string | null
+  status: 'pending' | 'paid' | 'failed' | 'refunded' | 'disputed' | 'cancelled'
+  net_amount: number | null
+  paid_at: string | null
+  failed_at: string | null
+  refunded_at: string | null
+  disputed_at: string | null
+  // Fulfillment join fields (optional)
+  fulfillment_status?: string | null
+  fulfillment_type?: string | null
+  tracking_number?: string | null
+  appointment_time?: string | null
+  digital_delivered_at?: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface BusinessSettings {
+  id: string
+  organization_id: string
+  business_type: 'service' | 'appointment' | 'digital' | 'physical' | null
+  service_description: string | null
+  booking_link: string | null
+  appointment_duration_minutes: number | null
+  digital_product_gcs_path: string | null
+  digital_access_expiry_hours: number | null
+  requires_shipping_address: boolean
+  default_carrier: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface BillingStatus {
+  tier: 'free' | 'starter' | 'pro' | 'enterprise'
+  hasStripeCustomer: boolean
+  hasActiveSubscription: boolean
 }
 
 // Chat interface
