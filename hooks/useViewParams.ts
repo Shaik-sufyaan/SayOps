@@ -11,6 +11,7 @@ export type ViewId =
   | "settings"
   | "agent"
   | "create-agent"
+  | "payments"
 
 export function useViewParams() {
   const searchParams = useSearchParams()
