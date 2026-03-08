@@ -99,7 +99,7 @@ export function UniversalChat({
 
   const chatContent = (
     <>
-      <div className="flex items-center justify-between px-4 py-3 border-b bg-primary text-primary-foreground shrink-0">
+      <div className="flex items-center justify-between px-4 py-3 border-b bg-gradient-to-r from-blue-400 via-slate-500 to-purple-500 dark:from-zinc-900 dark:via-zinc-800 dark:to-zinc-900 text-white shrink-0">
         <div className="flex items-center gap-2 pl-2">
           <div className="size-8 rounded-lg bg-primary-foreground/20 flex items-center justify-center">
             <IconMessageChatbot className="size-5" />
