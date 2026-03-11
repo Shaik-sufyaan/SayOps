@@ -63,8 +63,8 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
     if (!user) return
     fetchUsageSummary("month")
       .then(({ rows }) => {
-        const totalCost = rows.reduce((sum, r) => sum + r.total_cost_usd, 0)
-        const totalTokens = rows.reduce((sum, r) => sum + r.total_quantity, 0)
+        const totalCost = rows.reduce((sum, r) => sum + Number(r.total_cost_usd), 0)
+        const totalTokens = rows.reduce((sum, r) => sum + Number(r.total_quantity), 0)
         setUsageStats({ totalCost, totalTokens })
       })
       .catch(() => {})
