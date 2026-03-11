@@ -78,6 +78,15 @@ export function TokenUsagePanel() {
 
   React.useEffect(() => {
     loadData().catch(() => setLoading(false))
+
+    const interval = setInterval(() => loadData().catch(() => {}), 30_000)
+    const onVisible = () => { if (document.visibilityState === "visible") loadData().catch(() => {}) }
+    document.addEventListener("visibilitychange", onVisible)
+
+    return () => {
+      clearInterval(interval)
+      document.removeEventListener("visibilitychange", onVisible)
+    }
   }, [loadData])
 
   const totals = React.useMemo(() => {
