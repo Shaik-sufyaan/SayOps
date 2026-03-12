@@ -15,47 +15,47 @@ export default function MarketingFooter() {
   }
 
   return (
-    <footer className="border-t border-white/10 bg-[#111827] text-[#c0c5ce]">
-      <div className="mx-auto grid max-w-7xl gap-10 px-6 py-14 md:grid-cols-4 md:px-10 lg:px-12">
-        <div>
-          <h3 className="text-lg font-semibold tracking-tight text-white">SpeakOps</h3>
-          <p className="mt-4 max-w-sm text-sm leading-7 text-[#a8afb9]">
-            By <strong className="font-semibold text-white">0 Lumen Labs</strong>. AI customer support for SMBs and solopreneurs. Setup in five minutes, under ten clicks. Focus on work; we recover lost customers and revenue.
+    <footer className="border-t border-black/10 bg-[linear-gradient(180deg,#d9d3e5_0%,#cbc0dc_100%)] text-[#3f4752]">
+      <div className="grid w-full grid-cols-2 gap-8 px-6 py-12 md:grid-cols-4 md:gap-10 md:px-10 md:py-14 lg:px-16">
+        <div className="col-span-2 md:col-span-1">
+          <h3 className="text-lg font-semibold tracking-tight text-[#111827]">SpeakOps</h3>
+          <p className="mt-4 max-w-sm text-sm leading-7 text-[#4b5563]">
+            By <strong className="font-semibold text-[#111827]">0 Lumen Labs</strong>. AI customer support for SMBs and solopreneurs. Setup in five minutes, under ten clicks. Focus on work; we recover lost customers and revenue.
           </p>
         </div>
 
         <div>
-          <h4 className="text-xs font-semibold uppercase tracking-[0.18em] text-white">Company</h4>
+          <h4 className="text-xs font-semibold uppercase tracking-[0.18em] text-[#111827]">Company</h4>
           <nav className="mt-4 flex flex-col gap-3 text-sm">
-            <Link href="/about" className="transition hover:text-white">
+            <Link href="/about" className="transition hover:text-[#111827]">
               About
             </Link>
-            <Link href="/careers" className="transition hover:text-white">
+            <Link href="/careers" className="transition hover:text-[#111827]">
               Careers
             </Link>
-            <Link href="/press" className="transition hover:text-white">
+            <Link href="/press" className="transition hover:text-[#111827]">
               Press
             </Link>
           </nav>
         </div>
 
         <div>
-          <h4 className="text-xs font-semibold uppercase tracking-[0.18em] text-white">Legal</h4>
+          <h4 className="text-xs font-semibold uppercase tracking-[0.18em] text-[#111827]">Legal</h4>
           <nav className="mt-4 flex flex-col gap-3 text-sm">
-            <Link href="/privacy" className="transition hover:text-white">
+            <Link href="/privacy" className="transition hover:text-[#111827]">
               Privacy
             </Link>
-            <Link href="/terms" className="transition hover:text-white">
+            <Link href="/terms" className="transition hover:text-[#111827]">
               Terms
             </Link>
-            <Link href="/security" className="transition hover:text-white">
+            <Link href="/security" className="transition hover:text-[#111827]">
               Security
             </Link>
           </nav>
         </div>
 
         <div>
-          <h4 className="text-xs font-semibold uppercase tracking-[0.18em] text-white">Contact</h4>
+          <h4 className="text-xs font-semibold uppercase tracking-[0.18em] text-[#111827]">Contact</h4>
           <form onSubmit={handleSubmit} className="mt-4 flex items-center gap-2">
             <input
               type="email"
@@ -63,18 +63,18 @@ export default function MarketingFooter() {
               onChange={(event) => setEmail(event.target.value)}
               placeholder=""
               aria-label="Email address"
-              className="h-10 min-w-0 flex-1 rounded-md border border-white/10 bg-[#1b2331] px-3 text-sm text-white outline-none placeholder:text-[#7f8795] focus:border-white/20"
+              className="h-10 min-w-0 flex-1 rounded-md border border-black/10 bg-[#f4f0fa] px-3 text-sm text-[#111827] outline-none placeholder:text-[#8b93a1] focus:border-black/20"
             />
             <button
               type="submit"
-              className="h-10 rounded-md bg-white px-3 text-sm font-medium text-[#111827] transition hover:bg-[#e5e7eb]"
+              className="h-10 rounded-md bg-[#111827] px-3 text-sm font-medium text-white transition hover:bg-[#1f2937]"
             >
               Subscribe
             </button>
           </form>
           <p className="mt-3 text-sm text-[#8f96a3]">or</p>
           <p className="mt-3 text-sm">
-            <a href="mailto:eva@0lumens.com" className="font-medium text-white transition hover:text-[#d1d5db]">
+            <a href="mailto:eva@0lumens.com" className="font-medium text-[#111827] transition hover:text-[#374151]">
               eva@0lumens.com
             </a>
           </p>
