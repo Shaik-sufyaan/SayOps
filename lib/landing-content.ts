@@ -78,9 +78,9 @@ export const landingContent = {
   brand: "SpeakOps",
   eyebrow: "AI customer support that acts like an operator, not a script",
   hero: {
-    headline: "Upload your company context, connect your ERP, get a dedicated phone number, and let the agent handle calls while you get SMS summaries in your native language. Focus on work; we recover lost customers and revenue.",
+    headline: "Your AI Call Agent for Recovering Lost Revenue",
     subhead:
-      "SpeakOps answers the call, handles the task inside your systems, and sends the owner the exact summary that matters. The dual-phone flow below is the product, not filler.",
+      "Upload your context, connect your tools, get a dedicated number. Go live in minutes — we recover customers while you focus on work.",
     primaryCta: "Continue with Google",
     secondaryCta: "Jump to live demo",
     microCopy: "Go live in minutes. One business number. Real actions. Real summaries.",
