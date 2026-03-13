@@ -236,6 +236,7 @@ export function AdminOrgsPanel() {
                   <th className="text-left px-4 py-3 font-medium text-muted-foreground">Owner</th>
                   <th className="text-left px-4 py-3 font-medium text-muted-foreground">Tier</th>
                   <th className="text-left px-4 py-3 font-medium text-muted-foreground">Agents</th>
+                  <th className="text-left px-4 py-3 font-medium text-muted-foreground">Tokens Used</th>
                   <th className="text-left px-4 py-3 font-medium text-muted-foreground">Created</th>
                   <th className="w-10" />
                 </tr>
@@ -243,7 +244,7 @@ export function AdminOrgsPanel() {
               <tbody>
                 {filtered.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="px-4 py-8 text-center text-muted-foreground">
+                    <td colSpan={6} className="px-4 py-8 text-center text-muted-foreground">
                       {hasActiveFilters ? "No organizations match your filters" : "No organizations found"}
                     </td>
                   </tr>
@@ -274,6 +275,9 @@ export function AdminOrgsPanel() {
                           <TierBadge tier={org.subscription_tier} />
                         </td>
                         <td className="px-4 py-3 text-muted-foreground">{org.agent_count}</td>
+                        <td className="px-4 py-3 font-mono text-sm text-destructive">
+                          {org.total_tokens_used > 0 ? org.total_tokens_used.toLocaleString() : <span className="text-muted-foreground">—</span>}
+                        </td>
                         <td className="px-4 py-3 text-muted-foreground">
                           {new Date(org.created_at).toLocaleDateString()}
                         </td>

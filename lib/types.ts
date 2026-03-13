@@ -44,6 +44,7 @@ export interface AdminOrg {
   subscription_tier: string
   agent_count: number
   pending_number_requests: number
+  total_tokens_used: number
   created_at: string
   updated_at: string
 }

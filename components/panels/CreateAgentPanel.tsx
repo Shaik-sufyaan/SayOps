@@ -18,6 +18,7 @@ import { useViewParams } from "@/hooks/useViewParams"
 import { useAgentsStore } from "@/stores/agentsStore"
 import type { Agent } from "@/lib/types"
 import { toast } from "sonner"
+import { CallForwardingGuide } from "@/components/CallForwardingGuide"
 
 const DRAFT_STORAGE_KEY = "create-agent-draft-v1"
 
@@ -335,6 +336,11 @@ export function CreateAgentPanel() {
           <div className="w-full rounded-lg border bg-muted/50 px-6 py-4 text-center">
             <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Assigned Phone Number</p>
             <p className="mt-2 text-3xl font-bold tabular-nums tracking-wide">{displayPhone}</p>
+            {createdAgent.phone_number && (
+              <div className="mt-2 flex justify-center">
+                <CallForwardingGuide phoneNumber={createdAgent.phone_number} />
+              </div>
+            )}
           </div>
 
           <Button
