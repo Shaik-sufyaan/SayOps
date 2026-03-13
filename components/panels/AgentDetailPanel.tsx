@@ -12,6 +12,7 @@ import { IconPhone, IconLoader2 } from "@tabler/icons-react"
 import { useViewParams } from "@/hooks/useViewParams"
 import { Agent } from "@/lib/types"
 import { toast } from "sonner"
+import { CallForwardingGuide } from "@/components/CallForwardingGuide"
 
 interface AgentDetailPanelProps {
   agentId: string | null
@@ -84,29 +85,32 @@ export function AgentDetailPanel({ agentId }: AgentDetailPanelProps) {
             Manage agent settings and test interactions.
           </p>
         </div>
-        <div className="flex items-center gap-2 pt-1">
-          {agent.phone_number ? (
-            <Badge variant="outline" className="gap-1.5 text-sm px-3 py-1">
-              <IconPhone className="size-3.5" />
-              {agent.phone_number}
-            </Badge>
-          ) : agent.number_requested_at ? (
-            <Badge variant="secondary" className="gap-1.5 text-sm px-3 py-1">
-              <IconPhone className="size-3.5" />
-              Number Pending
-            </Badge>
-          ) : (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleRequestNumber}
-              disabled={isRequesting}
-            >
-              {isRequesting
-                ? <><IconLoader2 className="mr-2 size-4 animate-spin" />Requesting...</>
-                : <><IconPhone className="mr-2 size-4" />Request Number</>}
-            </Button>
-          )}
+        <div className="flex flex-col items-end gap-0.5 pt-1">
+          <div className="flex items-center gap-2">
+            {agent.phone_number ? (
+              <Badge variant="outline" className="gap-1.5 text-sm px-3 py-1">
+                <IconPhone className="size-3.5" />
+                {agent.phone_number}
+              </Badge>
+            ) : agent.number_requested_at ? (
+              <Badge variant="secondary" className="gap-1.5 text-sm px-3 py-1">
+                <IconPhone className="size-3.5" />
+                Number Pending
+              </Badge>
+            ) : (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleRequestNumber}
+                disabled={isRequesting}
+              >
+                {isRequesting
+                  ? <><IconLoader2 className="mr-2 size-4 animate-spin" />Requesting...</>
+                  : <><IconPhone className="mr-2 size-4" />Request Number</>}
+              </Button>
+            )}
+          </div>
+          <CallForwardingGuide phoneNumber={agent.phone_number ?? "(Your AI Agent Number)"} />
         </div>
       </div>
       <Tabs defaultValue="settings" className="space-y-4">
