@@ -13,9 +13,10 @@ AI-powered customer representatives platform. Create intelligent agents that han
 
 ### Prerequisites
 
-- Node.js 18+ (Node.js 20+ recommended)
-- npm or pnpm
+- Bun 1.3+
 - **Docker** (Recommended for development)
+
+Use **Bun** exclusively for installs and local scripts in this repo. Do not use `npm`, `npx`, `pnpm`, or `yarn`.
 
 ### Quick Start (Docker)
 
@@ -57,7 +58,7 @@ docker compose -f docker-compose.test.yml up
 4. Build for Production
    ```bash
    bun run build
-   bun start
+   bun run start
    ```
 
 ## Tech Stack

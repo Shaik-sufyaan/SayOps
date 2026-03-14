@@ -1,9 +1,9 @@
-#!/usr/bin/env tsx
+#!/usr/bin/env bun
 /**
  * Twilio Integration Tests
  * Tests phone provisioning, webhook response, and call logging
  *
- * Usage: npx tsx scripts/test-twilio.ts
+ * Usage: bun scripts/test-twilio.ts
  */
 
 import { config } from "dotenv"
@@ -173,7 +173,7 @@ async function main() {
     if (numbers.length > 0) {
       console.log("📞 MANUAL TEST INSTRUCTIONS:")
       console.log("=" .repeat(60))
-      console.log(`\n1. Make sure your dev server is running: npm run dev`)
+      console.log(`\n1. Make sure your dev server is running: bun run dev`)
       console.log(`2. If testing locally, expose via ngrok:`)
       console.log(`   ngrok http 3000`)
       console.log(`   Then update webhook URL in Twilio console`)

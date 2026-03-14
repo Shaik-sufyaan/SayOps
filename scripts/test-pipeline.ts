@@ -1,9 +1,9 @@
-#!/usr/bin/env ts-node
+#!/usr/bin/env bun
 /**
  * End-to-end test script for data pipeline.
  * Tests: User creation → Agent creation → File upload → Agent listing → Call simulation
  *
- * Usage: npx ts-node scripts/test-pipeline.ts
+ * Usage: bun scripts/test-pipeline.ts
  */
 
 import { query, insertRow, table } from "../lib/bigquery"

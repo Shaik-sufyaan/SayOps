@@ -23,6 +23,8 @@ import type {
   OwnerClaimCompletion,
   AdminOrg,
   AdminAgent,
+  AdminConversationSummary,
+  AdminConversationMessage,
   ExistingNumberAssignmentRequest,
   EvaNumberBinding,
 } from "@/lib/types"
@@ -183,6 +185,46 @@ async function apiFetch<T>(endpoint: string, options?: RequestInit): Promise<T> 
   }
 
   return res.json()
+}
+
+function hydrateApiMessages<T extends {
+  tool_calls: any
+  tool_result: any
+  content: any
+}>(messages: T[]): T[] {
+  return messages.map((m) => {
+    let parsedToolCalls = m.tool_calls
+    if (typeof parsedToolCalls === "string") {
+      try {
+        parsedToolCalls = JSON.parse(parsedToolCalls)
+      } catch {}
+    }
+
+    let parsedToolResult = m.tool_result
+    if (typeof parsedToolResult === "string") {
+      try {
+        parsedToolResult = JSON.parse(parsedToolResult)
+      } catch {}
+    }
+
+    if (typeof parsedToolCalls === "string") {
+      try {
+        parsedToolCalls = JSON.parse(parsedToolCalls)
+      } catch {}
+    }
+    if (typeof parsedToolResult === "string") {
+      try {
+        parsedToolResult = JSON.parse(parsedToolResult)
+      } catch {}
+    }
+
+    return {
+      ...m,
+      content: m.content,
+      tool_calls: Array.isArray(parsedToolCalls) ? parsedToolCalls : null,
+      tool_result: parsedToolResult,
+    }
+  }) as T[]
 }
 
 // ---- User & Org ----
@@ -596,43 +638,8 @@ export async function createConversation(agentId: string, mode: 'new' | 'reuse' 
 
 export async function fetchMessages(conversationId: string): Promise<Message[]> {
   const res = await apiFetch<{ messages: any[] }>(`/conversations/${conversationId}/messages`)
-  
-  return res.messages.map(m => {
-    let parsedToolCalls = m.tool_calls
-    if (typeof parsedToolCalls === 'string') {
-      try {
-        parsedToolCalls = JSON.parse(parsedToolCalls)
-      } catch (e) {
-        // keep as is
-      }
-    }
-    
-    let parsedToolResult = m.tool_result
-    if (typeof parsedToolResult === 'string') {
-      try {
-        parsedToolResult = JSON.parse(parsedToolResult)
-      } catch (e) {
-        // keep as is
-      }
-    }
 
-    // Double check if tool_calls is still a string (double encoded)
-    if (typeof parsedToolCalls === 'string') {
-      try { parsedToolCalls = JSON.parse(parsedToolCalls) } catch(e) {}
-    }
-    if (typeof parsedToolResult === 'string') {
-      try { parsedToolResult = JSON.parse(parsedToolResult) } catch(e) {}
-    }
-
-    const hydratedContent = m.content
-    
-    return {
-      ...m,
-      content: hydratedContent,
-      tool_calls: Array.isArray(parsedToolCalls) ? parsedToolCalls : null,
-      tool_result: parsedToolResult
-    }
-  }) as Message[]
+  return hydrateApiMessages(res.messages ?? []) as Message[]
 }
 
 export async function fetchRecordingUrl(conversationId: string): Promise<string> {
@@ -1014,6 +1021,38 @@ export async function fetchAdminOrganizations(page = 0, limit = 50): Promise<{ o
 export async function fetchAdminOrgAgents(orgId: string): Promise<AdminAgent[]> {
   const res = await apiFetch<{ agents: AdminAgent[] }>(`/admin/organizations/${encodeURIComponent(orgId)}/agents`)
   return res.agents || []
+}
+
+export async function fetchAdminOrgConversations(
+  orgId: string,
+  options?: { agentId?: string; limit?: number; cursor?: string }
+): Promise<{ conversations: AdminConversationSummary[]; nextCursor: string | null }> {
+  const params = new URLSearchParams()
+  if (options?.agentId) params.set("agentId", options.agentId)
+  if (options?.limit) params.set("limit", String(options.limit))
+  if (options?.cursor) params.set("cursor", options.cursor)
+  const query = params.toString()
+  const endpoint = `/admin/organizations/${encodeURIComponent(orgId)}/conversations${query ? `?${query}` : ""}`
+  return apiFetch<{ conversations: AdminConversationSummary[]; nextCursor: string | null }>(endpoint)
+}
+
+export async function fetchAdminConversationMessages(
+  orgId: string,
+  conversationId: string
+): Promise<AdminConversationMessage[]> {
+  const res = await apiFetch<{ messages: AdminConversationMessage[] }>(
+    `/admin/conversations/${encodeURIComponent(conversationId)}/messages?orgId=${encodeURIComponent(orgId)}`
+  )
+  return hydrateApiMessages(res.messages ?? []) as AdminConversationMessage[]
+}
+
+export async function fetchAdminExecutionLlmTraces(
+  orgId: string,
+  executionId: string
+): Promise<LlmTraceDebugSession> {
+  return apiFetch<LlmTraceDebugSession>(
+    `/admin/executions/${encodeURIComponent(executionId)}/llm-traces?orgId=${encodeURIComponent(orgId)}`
+  )
 }
 
 export async function adminRejectNumberRequests(orgId: string): Promise<{ success: boolean }> {

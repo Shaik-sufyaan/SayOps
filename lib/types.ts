@@ -62,6 +62,21 @@ export interface AdminAgent {
   updated_at: string
 }
 
+export interface AdminConversationSummary {
+  id: string
+  agentId: string
+  agentName: string
+  channel: 'sms' | 'voice' | 'web' | 'api' | 'instagram' | 'facebook' | 'whatsapp' | 'telegram' | 'email'
+  status: 'active' | 'idle' | 'completed' | 'archived'
+  startedAt: string
+  lastMessageAt: string | null
+  summary: string | null
+  participantType: 'customer' | 'member' | 'unknown'
+  participantLabel: string
+  hasTranscript: boolean
+  hasRecording: boolean
+}
+
 
 export interface Agent {
   id: string
@@ -173,6 +188,11 @@ export interface Message {
   tool_name: string | null
   tool_result: any | null
   created_at: string
+}
+
+export interface AdminConversationMessage extends Message {
+  hasLlmTrace: boolean
+  traceExecutionId: string | null
 }
 
 export interface ConversationTurn {

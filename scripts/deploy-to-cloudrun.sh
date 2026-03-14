@@ -62,8 +62,8 @@ else
     WEBHOOK_URL="${CLOUD_RUN_URL}/api/twilio/voice/${agent_id}"
     echo "   Updating webhook for agent $agent_id ($phone_number) → $WEBHOOK_URL"
 
-    # Update via Twilio API (using npx tsx)
-    npx tsx -e "
+    # Update via Twilio API with Bun
+    bun -e "
       import { Twilio } from 'twilio';
       const client = new Twilio('${TWILIO_ACCOUNT_SID}', '${TWILIO_AUTH_TOKEN}');
       (async () => {

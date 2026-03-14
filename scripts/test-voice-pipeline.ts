@@ -1,4 +1,4 @@
-#!/usr/bin/env tsx
+#!/usr/bin/env bun
 /**
  * Voice AI Pipeline Integration Test
  *
@@ -9,7 +9,7 @@
  * 4. Audio cache (store + retrieve)
  * 5. Full simulated turn (TTS → STT round-trip + Gemini)
  *
- * Usage: npx tsx scripts/test-voice-pipeline.ts
+ * Usage: bun scripts/test-voice-pipeline.ts
  */
 
 import { config } from "dotenv"
@@ -249,7 +249,7 @@ async function main() {
       }
     } catch {
       log("⚠", `Dev server not running at ${appUrl} — skipping HTTP test`)
-      log("⚠", "Start the dev server with 'npm run dev' to test webhook endpoints")
+      log("⚠", "Start the dev server with 'bun run dev' to test webhook endpoints")
       return
     }
 

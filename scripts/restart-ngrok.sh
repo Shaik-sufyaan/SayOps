@@ -23,7 +23,7 @@ echo "✅ ngrok running: $NGROK_URL"
 
 # Update webhook
 echo "🔧 Updating Twilio webhook..."
-npx tsx scripts/setup-test-agent.ts "$NGROK_URL"
+bun scripts/setup-test-agent.ts "$NGROK_URL"
 
 echo ""
 echo "🎉 Ready! Call +1 (866) 839-3036"

@@ -1,4 +1,4 @@
-#!/usr/bin/env tsx
+#!/usr/bin/env bun
 /**
  * Creates a test agent and updates Twilio webhook
  */
@@ -20,7 +20,7 @@ async function main() {
   console.log("🔧 Setting up test agent for Twilio...\n")
 
   if (!ngrokUrl) {
-    console.error("❌ Usage: npx tsx scripts/setup-test-agent.ts <ngrok-url>")
+    console.error("❌ Usage: bun scripts/setup-test-agent.ts <ngrok-url>")
     process.exit(1)
   }
 

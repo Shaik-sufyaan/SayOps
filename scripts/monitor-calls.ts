@@ -1,4 +1,4 @@
-#!/usr/bin/env tsx
+#!/usr/bin/env bun
 /**
  * Real-time call monitor
  * Polls BigQuery for new calls every 2 seconds

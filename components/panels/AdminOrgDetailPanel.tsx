@@ -1,23 +1,113 @@
 "use client"
 
-import React, { useEffect, useState, useCallback } from "react"
+import React from "react"
 import { useAuth } from "@/lib/auth-context"
 import { useViewParams } from "@/hooks/useViewParams"
-import { fetchAdminOrgAgents, adminAssignNumber } from "@/lib/api-client"
-import type { AdminAgent } from "@/lib/types"
+import { useIsMobile } from "@/hooks/use-mobile"
+import {
+  adminAssignNumber,
+  fetchAdminConversationMessages,
+  fetchAdminExecutionLlmTraces,
+  fetchAdminOrgAgents,
+  fetchAdminOrgConversations,
+} from "@/lib/api-client"
+import { pickDefaultTraceMessage } from "@/lib/admin-inspector"
+import type {
+  AdminAgent,
+  AdminConversationMessage,
+  AdminConversationSummary,
+  LlmTraceDebugSession,
+} from "@/lib/types"
+import { ChatMessage } from "@/components/chat/ChatMessage"
+import { LlmTraceInspector } from "@/components/debug/LlmTraceInspector"
 import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
 import { Spinner } from "@/components/ui/spinner"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { ScrollArea } from "@/components/ui/scroll-area"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
-  DialogDescription,
 } from "@/components/ui/dialog"
-import { IconArrowLeft, IconPhone, IconPhoneOff } from "@tabler/icons-react"
+import {
+  ResizableHandle,
+  ResizablePanel,
+  ResizablePanelGroup,
+} from "@/components/ui/resizable"
+import {
+  IconArrowLeft,
+  IconChevronRight,
+  IconLoader2,
+  IconMessage2,
+  IconPhone,
+  IconPhoneOff,
+  IconRefresh,
+  IconRobot,
+} from "@tabler/icons-react"
 import { toast } from "sonner"
+
+const ALL_AGENTS_VALUE = "__all_agents__"
+const CONVERSATION_PAGE_SIZE = 50
+
+type AdminDetailTab = "agents" | "conversations"
+type MobileConversationPane = "transcript" | "trace"
+
+function formatDateTime(value: string | null): string {
+  if (!value) return "—"
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return value
+  return date.toLocaleString()
+}
+
+function formatDateShort(value: string | null): string {
+  if (!value) return "—"
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return value
+  return date.toLocaleDateString()
+}
+
+function formatChannelLabel(channel: AdminConversationSummary["channel"]): string {
+  switch (channel) {
+    case "sms":
+      return "SMS"
+    case "voice":
+      return "Voice"
+    case "web":
+      return "Web"
+    case "api":
+      return "API"
+    case "instagram":
+      return "Instagram"
+    case "facebook":
+      return "Facebook"
+    case "whatsapp":
+      return "WhatsApp"
+    case "telegram":
+      return "Telegram"
+    case "email":
+      return "Email"
+    default:
+      return channel
+  }
+}
+
+function messageTimestamp(value: string): number {
+  const date = new Date(value)
+  return Number.isNaN(date.getTime()) ? Date.now() : date.getTime()
+}
 
 interface AssignNumberFormProps {
   agentId: string
@@ -27,10 +117,10 @@ interface AssignNumberFormProps {
 }
 
 function AssignNumberForm({ agentId, agentName, onSuccess, onClose }: AssignNumberFormProps) {
-  const [phoneNumber, setPhoneNumber] = useState("")
-  const [vapiPhoneNumberId, setVapiPhoneNumberId] = useState("")
-  const [vapiAssistantId, setVapiAssistantId] = useState("")
-  const [submitting, setSubmitting] = useState(false)
+  const [phoneNumber, setPhoneNumber] = React.useState("")
+  const [vapiPhoneNumberId, setVapiPhoneNumberId] = React.useState("")
+  const [vapiAssistantId, setVapiAssistantId] = React.useState("")
+  const [submitting, setSubmitting] = React.useState(false)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -53,7 +143,7 @@ function AssignNumberForm({ agentId, agentName, onSuccess, onClose }: AssignNumb
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-4 mt-2">
+    <form onSubmit={handleSubmit} className="mt-2 flex flex-col gap-4">
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="phoneNumber">Phone Number (E.164)</Label>
         <Input
@@ -85,12 +175,12 @@ function AssignNumberForm({ agentId, agentName, onSuccess, onClose }: AssignNumb
           onChange={(e) => setVapiAssistantId(e.target.value)}
         />
       </div>
-      <div className="flex gap-2 justify-end mt-2">
+      <div className="mt-2 flex justify-end gap-2">
         <Button type="button" variant="outline" onClick={onClose} disabled={submitting}>
           Cancel
         </Button>
         <Button type="submit" disabled={submitting || !phoneNumber.trim() || !vapiPhoneNumberId.trim()}>
-          {submitting ? <Spinner className="size-4 mr-2" /> : null}
+          {submitting ? <Spinner className="mr-2 size-4" /> : null}
           Assign Number
         </Button>
       </div>
@@ -105,113 +195,317 @@ interface AdminOrgDetailPanelProps {
 export function AdminOrgDetailPanel({ orgId }: AdminOrgDetailPanelProps) {
   const { isPlatformAdmin } = useAuth()
   const { setView } = useViewParams()
-  const [agents, setAgents] = useState<AdminAgent[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [assignTarget, setAssignTarget] = useState<{ agentId: string; agentName: string } | null>(null)
+  const isMobile = useIsMobile()
 
-  // Redirect non-admins
-  useEffect(() => {
+  const [activeTab, setActiveTab] = React.useState<AdminDetailTab>("agents")
+  const [agents, setAgents] = React.useState<AdminAgent[]>([])
+  const [agentsLoading, setAgentsLoading] = React.useState(true)
+  const [agentsError, setAgentsError] = React.useState<string | null>(null)
+  const [assignTarget, setAssignTarget] = React.useState<{ agentId: string; agentName: string } | null>(null)
+
+  const [conversationAgentFilter, setConversationAgentFilter] = React.useState<string>(ALL_AGENTS_VALUE)
+  const [conversations, setConversations] = React.useState<AdminConversationSummary[]>([])
+  const [nextConversationCursor, setNextConversationCursor] = React.useState<string | null>(null)
+  const [conversationsLoading, setConversationsLoading] = React.useState(false)
+  const [conversationsLoadingMore, setConversationsLoadingMore] = React.useState(false)
+  const [conversationsError, setConversationsError] = React.useState<string | null>(null)
+  const [selectedConversationId, setSelectedConversationId] = React.useState<string | null>(null)
+
+  const [messages, setMessages] = React.useState<AdminConversationMessage[]>([])
+  const [messagesLoading, setMessagesLoading] = React.useState(false)
+  const [messagesError, setMessagesError] = React.useState<string | null>(null)
+  const [selectedTraceMessageId, setSelectedTraceMessageId] = React.useState<string | null>(null)
+  const [selectedTraceExecutionId, setSelectedTraceExecutionId] = React.useState<string | null>(null)
+
+  const [traceSession, setTraceSession] = React.useState<LlmTraceDebugSession | null>(null)
+  const [selectedTraceId, setSelectedTraceId] = React.useState<string | null>(null)
+  const [traceLoading, setTraceLoading] = React.useState(false)
+  const [traceError, setTraceError] = React.useState<string | null>(null)
+  const [mobileConversationPane, setMobileConversationPane] = React.useState<MobileConversationPane>("transcript")
+  const traceRequestRef = React.useRef(0)
+
+  React.useEffect(() => {
     if (!isPlatformAdmin) setView("dashboard")
   }, [isPlatformAdmin, setView])
 
-  const load = useCallback(async () => {
+  const loadAgents = React.useCallback(async () => {
     if (!orgId) return
-    setLoading(true)
-    setError(null)
+    setAgentsLoading(true)
+    setAgentsError(null)
     try {
       const result = await fetchAdminOrgAgents(orgId)
       setAgents(result)
     } catch (err: any) {
-      setError(err?.message || "Failed to load agents")
+      setAgentsError(err?.message || "Failed to load agents")
     } finally {
-      setLoading(false)
+      setAgentsLoading(false)
     }
   }, [orgId])
 
-  useEffect(() => {
-    if (isPlatformAdmin && orgId) load()
-  }, [isPlatformAdmin, orgId, load])
+  React.useEffect(() => {
+    if (isPlatformAdmin && orgId) {
+      void loadAgents()
+    }
+  }, [isPlatformAdmin, orgId, loadAgents])
+
+  const loadConversations = React.useCallback(async (append: boolean = false) => {
+    if (!orgId) return
+
+    const cursor = append ? nextConversationCursor ?? undefined : undefined
+    if (append && !cursor) return
+
+    if (append) {
+      setConversationsLoadingMore(true)
+    } else {
+      setConversationsLoading(true)
+      setConversationsError(null)
+    }
+
+    try {
+      const result = await fetchAdminOrgConversations(orgId, {
+        agentId: conversationAgentFilter === ALL_AGENTS_VALUE ? undefined : conversationAgentFilter,
+        limit: CONVERSATION_PAGE_SIZE,
+        cursor,
+      })
+
+      setConversations((prev) => (append ? [...prev, ...result.conversations] : result.conversations))
+      setNextConversationCursor(result.nextCursor ?? null)
+
+      if (!append) {
+        setSelectedConversationId((current) => {
+          if (current && result.conversations.some((conversation) => conversation.id === current)) {
+            return current
+          }
+          return result.conversations[0]?.id ?? null
+        })
+      }
+    } catch (err: any) {
+      setConversationsError(err?.message || "Failed to load conversations")
+      if (!append) {
+        setConversations([])
+        setSelectedConversationId(null)
+      }
+    } finally {
+      if (append) {
+        setConversationsLoadingMore(false)
+      } else {
+        setConversationsLoading(false)
+      }
+    }
+  }, [conversationAgentFilter, nextConversationCursor, orgId])
+
+  React.useEffect(() => {
+    if (!(isPlatformAdmin && orgId && activeTab === "conversations")) return
+
+    setSelectedConversationId(null)
+    setMessages([])
+    setMessagesError(null)
+    setSelectedTraceMessageId(null)
+    setSelectedTraceExecutionId(null)
+    setTraceSession(null)
+    setTraceError(null)
+    setSelectedTraceId(null)
+    void loadConversations(false)
+  }, [activeTab, conversationAgentFilter, isPlatformAdmin, orgId, loadConversations])
+
+  React.useEffect(() => {
+    if (!(isPlatformAdmin && orgId && activeTab === "conversations")) return
+
+    if (!selectedConversationId) {
+      setMessages([])
+      setMessagesError(null)
+      setMessagesLoading(false)
+      setSelectedTraceMessageId(null)
+      setSelectedTraceExecutionId(null)
+      setTraceSession(null)
+      setTraceError(null)
+      setSelectedTraceId(null)
+      return
+    }
+
+    let cancelled = false
+    setMessagesLoading(true)
+    setMessagesError(null)
+    setSelectedTraceMessageId(null)
+    setSelectedTraceExecutionId(null)
+    setTraceSession(null)
+    setTraceError(null)
+    setSelectedTraceId(null)
+    setMobileConversationPane("transcript")
+
+    void fetchAdminConversationMessages(orgId, selectedConversationId)
+      .then((result) => {
+        if (cancelled) return
+        setMessages(result)
+        const defaultTraceMessage = pickDefaultTraceMessage(result)
+        setSelectedTraceMessageId(defaultTraceMessage?.id ?? null)
+        setSelectedTraceExecutionId(defaultTraceMessage?.traceExecutionId ?? null)
+      })
+      .catch((err: any) => {
+        if (cancelled) return
+        setMessages([])
+        setMessagesError(err?.message || "Failed to load conversation messages")
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setMessagesLoading(false)
+        }
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [activeTab, isPlatformAdmin, orgId, selectedConversationId])
+
+  const loadTraceSession = React.useCallback(async (executionId: string) => {
+    if (!orgId) return
+    const requestId = traceRequestRef.current + 1
+    traceRequestRef.current = requestId
+    setTraceLoading(true)
+    setTraceError(null)
+    setSelectedTraceId(null)
+
+    try {
+      const session = await fetchAdminExecutionLlmTraces(orgId, executionId)
+      if (traceRequestRef.current !== requestId) return
+      setTraceSession(session)
+      setSelectedTraceId(session.traces[session.traces.length - 1]?.id ?? null)
+    } catch (err: any) {
+      if (traceRequestRef.current !== requestId) return
+      setTraceSession(null)
+      setTraceError(err?.message || "Failed to load raw LLM traces")
+    } finally {
+      if (traceRequestRef.current === requestId) {
+        setTraceLoading(false)
+      }
+    }
+  }, [orgId])
+
+  React.useEffect(() => {
+    if (!selectedTraceExecutionId) {
+      traceRequestRef.current += 1
+      setTraceSession(null)
+      setTraceError(null)
+      setTraceLoading(false)
+      setSelectedTraceId(null)
+      return
+    }
+    void loadTraceSession(selectedTraceExecutionId)
+  }, [loadTraceSession, selectedTraceExecutionId])
 
   const handleAssignSuccess = (updated: AdminAgent) => {
-    setAgents((prev) => prev.map((a) => (a.id === updated.id ? updated : a)))
+    setAgents((prev) => prev.map((agent) => (agent.id === updated.id ? updated : agent)))
     setAssignTarget(null)
   }
 
-  if (!isPlatformAdmin) return null
+  const handleOpenAgentConversations = (agentId: string) => {
+    setConversationAgentFilter(agentId)
+    setActiveTab("conversations")
+  }
 
-  return (
-    <div className="flex flex-1 flex-col p-6 gap-6 max-w-5xl mx-auto w-full">
-      <div className="flex items-center gap-3">
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => setView("admin-orgs")}
-          className="text-muted-foreground hover:text-foreground"
-        >
-          <IconArrowLeft className="size-4 mr-1" />
-          Organizations
-        </Button>
-      </div>
+  const handleSelectTraceMessage = (message: AdminConversationMessage) => {
+    if (!message.hasLlmTrace || !message.traceExecutionId) return
+    setSelectedTraceMessageId(message.id)
+    setSelectedTraceExecutionId(message.traceExecutionId)
+    setSelectedTraceId(null)
+    if (isMobile) {
+      setMobileConversationPane("trace")
+    }
+  }
 
-      <div>
-        <h1 className="text-xl font-semibold">Agents</h1>
-        <p className="text-sm text-muted-foreground">Org: {orgId}</p>
-      </div>
+  const selectedConversation = React.useMemo(
+    () => conversations.find((conversation) => conversation.id === selectedConversationId) ?? null,
+    [conversations, selectedConversationId]
+  )
 
-      {loading ? (
+  const agentOptions = React.useMemo(() => {
+    const byId = new Map<string, { id: string; name: string }>()
+    agents.forEach((agent) => byId.set(agent.id, { id: agent.id, name: agent.name }))
+    conversations.forEach((conversation) => {
+      if (!byId.has(conversation.agentId)) {
+        byId.set(conversation.agentId, { id: conversation.agentId, name: conversation.agentName })
+      }
+    })
+    return Array.from(byId.values()).sort((left, right) => left.name.localeCompare(right.name))
+  }, [agents, conversations])
+
+  const renderAgentsTab = () => {
+    if (agentsLoading) {
+      return (
         <div className="flex flex-1 items-center justify-center">
           <Spinner className="size-8" />
         </div>
-      ) : error ? (
-        <div className="text-sm text-destructive">{error}</div>
-      ) : (
-        <div className="rounded-lg border overflow-hidden">
-          <table className="w-full text-sm">
-            <thead className="bg-muted/50">
+      )
+    }
+
+    if (agentsError) {
+      return (
+        <Alert variant="destructive">
+          <AlertTitle>Agents unavailable</AlertTitle>
+          <AlertDescription>{agentsError}</AlertDescription>
+        </Alert>
+      )
+    }
+
+    return (
+      <div className="rounded-lg border overflow-hidden bg-background">
+        <table className="w-full text-sm">
+          <thead className="bg-muted/50">
+            <tr>
+              <th className="px-4 py-3 text-left font-medium text-muted-foreground">Agent</th>
+              <th className="px-4 py-3 text-left font-medium text-muted-foreground">Status</th>
+              <th className="px-4 py-3 text-left font-medium text-muted-foreground">Phone Number</th>
+              <th className="px-4 py-3 text-left font-medium text-muted-foreground">Requested</th>
+              <th className="px-4 py-3 text-right font-medium text-muted-foreground">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {agents.length === 0 ? (
               <tr>
-                <th className="text-left px-4 py-3 font-medium text-muted-foreground">Agent</th>
-                <th className="text-left px-4 py-3 font-medium text-muted-foreground">Status</th>
-                <th className="text-left px-4 py-3 font-medium text-muted-foreground">Phone Number</th>
-                <th className="text-left px-4 py-3 font-medium text-muted-foreground">Requested</th>
-                <th className="px-4 py-3 font-medium text-muted-foreground"></th>
+                <td colSpan={5} className="px-4 py-8 text-center text-muted-foreground">
+                  No agents found for this organization
+                </td>
               </tr>
-            </thead>
-            <tbody>
-              {agents.length === 0 ? (
-                <tr>
-                  <td colSpan={5} className="px-4 py-8 text-center text-muted-foreground">
-                    No agents found for this organization
+            ) : (
+              agents.map((agent) => (
+                <tr key={agent.id} className="border-t align-top">
+                  <td className="px-4 py-3 font-medium">{agent.name}</td>
+                  <td className="px-4 py-3">
+                    <span
+                      className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ${
+                        agent.is_active
+                          ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400"
+                          : "bg-muted text-muted-foreground"
+                      }`}
+                    >
+                      {agent.is_active ? "Active" : "Inactive"}
+                    </span>
                   </td>
-                </tr>
-              ) : (
-                agents.map((agent) => (
-                  <tr key={agent.id} className="border-t">
-                    <td className="px-4 py-3 font-medium">{agent.name}</td>
-                    <td className="px-4 py-3">
-                      <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ${agent.is_active ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400" : "bg-muted text-muted-foreground"}`}>
-                        {agent.is_active ? "Active" : "Inactive"}
+                  <td className="px-4 py-3">
+                    {agent.phone_number ? (
+                      <span className="flex items-center gap-1.5 font-mono text-xs text-emerald-600 dark:text-emerald-400">
+                        <IconPhone className="size-3.5" />
+                        {agent.phone_number}
                       </span>
-                    </td>
-                    <td className="px-4 py-3">
-                      {agent.phone_number ? (
-                        <span className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400 font-mono text-xs">
-                          <IconPhone className="size-3.5" />
-                          {agent.phone_number}
-                        </span>
-                      ) : (
-                        <span className="flex items-center gap-1.5 text-muted-foreground text-xs">
-                          <IconPhoneOff className="size-3.5" />
-                          Not assigned
-                        </span>
-                      )}
-                    </td>
-                    <td className="px-4 py-3 text-muted-foreground text-xs">
-                      {agent.number_requested_at
-                        ? new Date(agent.number_requested_at).toLocaleDateString()
-                        : "—"}
-                    </td>
-                    <td className="px-4 py-3 text-right">
+                    ) : (
+                      <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                        <IconPhoneOff className="size-3.5" />
+                        Not assigned
+                      </span>
+                    )}
+                  </td>
+                  <td className="px-4 py-3 text-xs text-muted-foreground">
+                    {agent.number_requested_at ? formatDateShort(agent.number_requested_at) : "—"}
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="flex justify-end gap-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleOpenAgentConversations(agent.id)}
+                      >
+                        View Conversations
+                      </Button>
                       <Button
                         size="sm"
                         variant={agent.phone_number ? "outline" : "default"}
@@ -219,16 +513,362 @@ export function AdminOrgDetailPanel({ orgId }: AdminOrgDetailPanelProps) {
                       >
                         {agent.phone_number ? "Replace Number" : "Assign Number"}
                       </Button>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-      )}
+                    </div>
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
+    )
+  }
 
-      <Dialog open={!!assignTarget} onOpenChange={(open) => { if (!open) setAssignTarget(null) }}>
+  const renderConversationList = () => (
+    <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-xl border bg-background">
+      <div className="border-b px-4 py-3">
+        <div className="flex items-center justify-between gap-2">
+          <div>
+            <h3 className="text-sm font-semibold">Conversations</h3>
+            <p className="text-xs text-muted-foreground">
+              {conversations.length} loaded
+              {selectedConversation ? ` • selected ${selectedConversation.agentName}` : ""}
+            </p>
+          </div>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="size-8"
+            onClick={() => void loadConversations(false)}
+            disabled={conversationsLoading}
+          >
+            {conversationsLoading ? (
+              <IconLoader2 className="size-4 animate-spin" />
+            ) : (
+              <IconRefresh className="size-4" />
+            )}
+          </Button>
+        </div>
+      </div>
+
+      <ScrollArea className="flex-1">
+        <div className="space-y-2 p-3">
+          {conversationsLoading && conversations.length === 0 ? (
+            <div className="flex min-h-[200px] items-center justify-center">
+              <Spinner className="size-6" />
+            </div>
+          ) : null}
+
+          {!conversationsLoading && conversations.length === 0 ? (
+            <div className="rounded-2xl border border-dashed bg-muted/30 p-4 text-sm text-muted-foreground">
+              No conversations found for this organization.
+            </div>
+          ) : null}
+
+          {conversations.map((conversation) => {
+            const isActive = conversation.id === selectedConversationId
+            return (
+              <button
+                key={conversation.id}
+                type="button"
+                onClick={() => {
+                  setSelectedConversationId(conversation.id)
+                  setMobileConversationPane("transcript")
+                }}
+                className={`w-full rounded-2xl border p-3 text-left transition-colors ${
+                  isActive
+                    ? "border-slate-900 bg-slate-900 text-white shadow-sm"
+                    : "border-border bg-background hover:border-foreground/30 hover:bg-muted/30"
+                }`}
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="truncate text-sm font-semibold">{conversation.participantLabel}</div>
+                    <div className={`mt-1 text-xs ${isActive ? "text-slate-300" : "text-muted-foreground"}`}>
+                      {conversation.agentName} • {formatChannelLabel(conversation.channel)}
+                    </div>
+                  </div>
+                  <IconChevronRight className={`mt-0.5 size-4 shrink-0 ${isActive ? "text-slate-300" : "text-muted-foreground"}`} />
+                </div>
+                <div className={`mt-3 line-clamp-2 text-xs leading-5 ${isActive ? "text-slate-200" : "text-muted-foreground"}`}>
+                  {conversation.summary?.trim() || "No summary available yet."}
+                </div>
+                <div className={`mt-3 flex flex-wrap items-center gap-2 text-[11px] ${isActive ? "text-slate-300" : "text-muted-foreground"}`}>
+                  <span>{formatDateTime(conversation.lastMessageAt ?? conversation.startedAt)}</span>
+                  {conversation.hasTranscript ? <Badge variant="outline">Transcript</Badge> : null}
+                  {conversation.hasRecording ? <Badge variant="outline">Recording</Badge> : null}
+                </div>
+              </button>
+            )
+          })}
+
+          {nextConversationCursor ? (
+            <Button
+              variant="outline"
+              className="w-full"
+              onClick={() => void loadConversations(true)}
+              disabled={conversationsLoadingMore}
+            >
+              {conversationsLoadingMore ? <Spinner className="mr-2 size-4" /> : null}
+              Load More
+            </Button>
+          ) : null}
+        </div>
+      </ScrollArea>
+    </div>
+  )
+
+  const renderTranscriptPane = () => (
+    <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-xl border bg-background">
+      <div className="border-b px-4 py-3">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h3 className="text-sm font-semibold">Transcript</h3>
+            <p className="text-xs text-muted-foreground">
+              {selectedConversation
+                ? `${selectedConversation.participantLabel} • ${selectedConversation.agentName}`
+                : "Select a conversation to inspect the transcript"}
+            </p>
+          </div>
+          {selectedConversation ? (
+            <div className="flex flex-wrap items-center gap-2">
+              <Badge variant="outline">{formatChannelLabel(selectedConversation.channel)}</Badge>
+              <Badge variant="outline">{selectedConversation.status}</Badge>
+            </div>
+          ) : null}
+        </div>
+      </div>
+
+      <ScrollArea className="flex-1">
+        <div className="space-y-4 p-4">
+          {messagesLoading ? (
+            <div className="flex min-h-[240px] items-center justify-center">
+              <Spinner className="size-6" />
+            </div>
+          ) : null}
+
+          {!messagesLoading && !selectedConversation ? (
+            <div className="rounded-2xl border border-dashed bg-muted/30 p-6 text-sm text-muted-foreground">
+              Select a conversation from the left to inspect its interaction history.
+            </div>
+          ) : null}
+
+          {!messagesLoading && selectedConversation && messages.length === 0 ? (
+            <div className="rounded-2xl border border-dashed bg-muted/30 p-6 text-sm text-muted-foreground">
+              No transcript messages are available for this conversation.
+            </div>
+          ) : null}
+
+          {messages.map((message) => {
+            const traceable = message.role === "assistant" && message.hasLlmTrace && !!message.traceExecutionId
+            const isSelected = traceable && message.id === selectedTraceMessageId
+            return (
+              <div
+                key={message.id}
+                role={traceable ? "button" : undefined}
+                tabIndex={traceable ? 0 : undefined}
+                onClick={traceable ? () => handleSelectTraceMessage(message) : undefined}
+                onKeyDown={
+                  traceable
+                    ? (event) => {
+                        if (event.key === "Enter" || event.key === " ") {
+                          event.preventDefault()
+                          handleSelectTraceMessage(message)
+                        }
+                      }
+                    : undefined
+                }
+                className={`rounded-2xl border p-3 transition-colors ${
+                  traceable ? "cursor-pointer hover:border-foreground/40" : ""
+                } ${isSelected ? "border-slate-900 bg-slate-50" : "border-transparent"}`}
+              >
+                <ChatMessage
+                  role={message.role}
+                  content={message.content ?? ""}
+                  timestamp={messageTimestamp(message.created_at)}
+                  toolCalls={message.tool_calls ?? undefined}
+                />
+                <div className="flex flex-wrap items-center gap-2 pl-11 pt-2 text-xs text-muted-foreground">
+                  <span>{formatDateTime(message.created_at)}</span>
+                  {traceable ? (
+                    <Badge variant={isSelected ? "default" : "outline"}>
+                      Inspectable
+                    </Badge>
+                  ) : null}
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      </ScrollArea>
+    </div>
+  )
+
+  const renderTracePane = () => (
+    <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-xl border bg-background">
+      <div className="border-b px-4 py-3">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <h3 className="text-sm font-semibold">Raw LLM Input / Output</h3>
+            <p className="text-xs text-muted-foreground">
+              {selectedTraceExecutionId
+                ? "Select provider calls inside the chosen assistant turn."
+                : "Select an assistant response marked Inspectable to load raw prompts and outputs."}
+            </p>
+          </div>
+        </div>
+      </div>
+      <div className="flex min-h-0 flex-1 p-4">
+        <LlmTraceInspector
+          session={traceSession}
+          selectedTraceId={selectedTraceId}
+          onSelectTraceId={setSelectedTraceId}
+          loading={traceLoading}
+          error={traceError}
+          onRefresh={
+            selectedTraceExecutionId
+              ? () => void loadTraceSession(selectedTraceExecutionId)
+              : undefined
+          }
+          refreshDisabled={!selectedTraceExecutionId}
+          className="flex-1"
+          emptyTitle="No raw trace loaded"
+          emptyDescription="Choose an inspectable assistant message from the transcript to view the exact model payloads."
+        />
+      </div>
+    </div>
+  )
+
+  if (!isPlatformAdmin) return null
+
+  return (
+    <div className="flex flex-1 min-h-0 flex-col gap-6 p-6">
+      <div className="flex items-center gap-3">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => setView("admin-orgs")}
+          className="text-muted-foreground hover:text-foreground"
+        >
+          <IconArrowLeft className="mr-1 size-4" />
+          Organizations
+        </Button>
+      </div>
+
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-semibold">Organization Detail</h1>
+          <p className="text-sm text-muted-foreground">Org: {orgId}</p>
+        </div>
+      </div>
+
+      <Tabs
+        value={activeTab}
+        onValueChange={(value) => setActiveTab(value as AdminDetailTab)}
+        className="flex min-h-0 flex-1 flex-col gap-4"
+      >
+        <TabsList className="w-fit">
+          <TabsTrigger value="agents">Agents</TabsTrigger>
+          <TabsTrigger value="conversations">Conversations</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="agents" className="mt-0 flex min-h-0 flex-1 flex-col">
+          {renderAgentsTab()}
+        </TabsContent>
+
+        <TabsContent value="conversations" className="mt-0 flex min-h-0 flex-1 flex-col gap-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h2 className="text-lg font-semibold">Conversation Browser</h2>
+              <p className="text-sm text-muted-foreground">
+                Inspect any conversation for this organization, including Eva/internal chats.
+              </p>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <Select value={conversationAgentFilter} onValueChange={setConversationAgentFilter}>
+                <SelectTrigger className="w-[220px]">
+                  <SelectValue placeholder="Filter by agent" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={ALL_AGENTS_VALUE}>All agents</SelectItem>
+                  {agentOptions.map((agent) => (
+                    <SelectItem key={agent.id} value={agent.id}>
+                      {agent.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Button variant="outline" onClick={() => void loadConversations(false)} disabled={conversationsLoading}>
+                {conversationsLoading ? <Spinner className="mr-2 size-4" /> : <IconRefresh className="mr-2 size-4" />}
+                Refresh
+              </Button>
+            </div>
+          </div>
+
+          {conversationsError ? (
+            <Alert variant="destructive">
+              <AlertTitle>Conversation browser unavailable</AlertTitle>
+              <AlertDescription>{conversationsError}</AlertDescription>
+            </Alert>
+          ) : null}
+
+          {messagesError ? (
+            <Alert variant="destructive">
+              <AlertTitle>Transcript unavailable</AlertTitle>
+              <AlertDescription>{messagesError}</AlertDescription>
+            </Alert>
+          ) : null}
+
+          {isMobile ? (
+            <div className="flex min-h-0 flex-1 flex-col gap-4">
+              <div className="min-h-[260px]">{renderConversationList()}</div>
+              <Tabs
+                value={mobileConversationPane}
+                onValueChange={(value) => setMobileConversationPane(value as MobileConversationPane)}
+                className="flex min-h-0 flex-1 flex-col gap-4"
+              >
+                <TabsList className="w-fit">
+                  <TabsTrigger value="transcript">
+                    <IconMessage2 className="mr-2 size-4" />
+                    Transcript
+                  </TabsTrigger>
+                  <TabsTrigger value="trace">
+                    <IconRobot className="mr-2 size-4" />
+                    Raw Inspector
+                  </TabsTrigger>
+                </TabsList>
+                <TabsContent value="transcript" className="mt-0 flex min-h-0 flex-1 flex-col">
+                  {renderTranscriptPane()}
+                </TabsContent>
+                <TabsContent value="trace" className="mt-0 flex min-h-0 flex-1 flex-col">
+                  {renderTracePane()}
+                </TabsContent>
+              </Tabs>
+            </div>
+          ) : (
+            <ResizablePanelGroup direction="horizontal" className="min-h-0 flex-1 rounded-xl border bg-muted/10 p-2">
+              <ResizablePanel defaultSize={24} minSize={18}>
+                {renderConversationList()}
+              </ResizablePanel>
+              <ResizableHandle withHandle />
+              <ResizablePanel defaultSize={34} minSize={24}>
+                {renderTranscriptPane()}
+              </ResizablePanel>
+              <ResizableHandle withHandle />
+              <ResizablePanel defaultSize={42} minSize={26}>
+                {renderTracePane()}
+              </ResizablePanel>
+            </ResizablePanelGroup>
+          )}
+        </TabsContent>
+      </Tabs>
+
+      <Dialog
+        open={!!assignTarget}
+        onOpenChange={(open) => {
+          if (!open) setAssignTarget(null)
+        }}
+      >
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Assign Phone Number</DialogTitle>
@@ -236,14 +876,14 @@ export function AdminOrgDetailPanel({ orgId }: AdminOrgDetailPanelProps) {
               Assign a Vapi phone number to <strong>{assignTarget?.agentName}</strong>.
             </DialogDescription>
           </DialogHeader>
-          {assignTarget && (
+          {assignTarget ? (
             <AssignNumberForm
               agentId={assignTarget.agentId}
               agentName={assignTarget.agentName}
               onSuccess={handleAssignSuccess}
               onClose={() => setAssignTarget(null)}
             />
-          )}
+          ) : null}
         </DialogContent>
       </Dialog>
     </div>

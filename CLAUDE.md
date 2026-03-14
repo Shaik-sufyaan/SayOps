@@ -9,11 +9,13 @@ SpeakOps is an AI-powered customer representative platform. The frontend is a Ne
 ## Commands
 
 ```bash
-npm install                    # Install dependencies
-npm run dev                    # Development server (http://localhost:3000)
-npm run build                  # Production build
-npm run lint                   # ESLint
+bun install                    # Install dependencies
+bun run dev                    # Development server (http://localhost:3000)
+bun run build                  # Production build
+bun run lint                   # ESLint
 ```
+
+Use **Bun** exclusively for installs, scripts, and ad hoc execution in this repo. Do not use `npm`, `npx`, `pnpm`, or `yarn`.
 
 ## Architecture
 
