@@ -25,6 +25,26 @@ function getTraceBadgeVariant(status: string): "secondary" | "destructive" {
 }
 
 const defaultRootOpenMatcher = (input: JsonTreeMatcherInput) => input.path === "root"
+const selectableCardBaseClass = "w-full rounded-2xl border p-3 text-left transition-colors"
+const selectableCardActiveClass = "border-primary/40 bg-primary/10 text-foreground shadow-sm"
+const selectableCardInactiveClass = "border-border bg-background hover:border-foreground/30 hover:bg-muted/30"
+const selectableSubtextActiveClass = "text-foreground/80"
+const selectableMetaActiveClass = "text-foreground/70"
+
+function getSelectableCardClass(active: boolean): string {
+  return cn(
+    selectableCardBaseClass,
+    active ? selectableCardActiveClass : selectableCardInactiveClass
+  )
+}
+
+function getSelectableSubtextClass(active: boolean): string {
+  return active ? selectableSubtextActiveClass : "text-muted-foreground"
+}
+
+function getSelectableMetaClass(active: boolean): string {
+  return active ? selectableMetaActiveClass : "text-muted-foreground"
+}
 
 export interface LlmTraceInspectorProps {
   session: LlmTraceDebugSession | null
@@ -69,16 +89,16 @@ export function LlmTraceInspector({
 
   return (
     <div className={cn("flex h-full min-h-0 flex-col gap-4 lg:flex-row", className)}>
-      <aside className="flex max-h-[280px] w-full shrink-0 flex-col overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-sm lg:max-h-none lg:w-[240px]">
-        <div className="space-y-2 border-b border-slate-200 px-5 py-4">
+      <aside className="flex max-h-[280px] w-full shrink-0 flex-col overflow-hidden rounded-xl border bg-background shadow-sm lg:max-h-none lg:w-[240px]">
+        <div className="space-y-2 border-b px-5 py-4">
           <h2 className="text-sm font-semibold">LLM Calls</h2>
-          <p className="text-xs text-slate-500">Select the exact provider invocation you want to inspect.</p>
+          <p className="text-xs text-muted-foreground">Select the exact provider invocation you want to inspect.</p>
         </div>
 
         <ScrollArea className="flex-1">
           <div className="space-y-2 p-3">
             {!session && !loading ? (
-              <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-4 text-sm text-slate-500">
+              <div className="rounded-2xl border border-dashed bg-muted/30 p-4 text-sm text-muted-foreground">
                 {emptyDescription}
               </div>
             ) : null}
@@ -90,23 +110,18 @@ export function LlmTraceInspector({
                   key={trace.id}
                   type="button"
                   onClick={() => onSelectTraceId?.(trace.id)}
-                  className={cn(
-                    "w-full rounded-2xl border p-3 text-left transition-colors",
-                    active
-                      ? "border-slate-900 bg-slate-900 text-white shadow-sm"
-                      : "border-slate-200 bg-white hover:border-slate-400 hover:bg-slate-50"
-                  )}
+                  className={getSelectableCardClass(active)}
                 >
                   <div className="flex items-start justify-between gap-2">
                     <div>
                       <div className="text-sm font-semibold">Call {index + 1}</div>
-                      <div className={cn("mt-1 font-mono text-[11px]", active ? "text-slate-200" : "text-slate-500")}>
+                      <div className={cn("mt-1 font-mono text-[11px]", getSelectableSubtextClass(active))}>
                         {trace.modelId}
                       </div>
                     </div>
                     <Badge variant={getTraceBadgeVariant(trace.status)}>{trace.status}</Badge>
                   </div>
-                  <div className={cn("mt-3 flex flex-wrap gap-2 text-[11px]", active ? "text-slate-300" : "text-slate-500")}>
+                  <div className={cn("mt-3 flex flex-wrap gap-2 text-[11px]", getSelectableMetaClass(active))}>
                     <span>attempt {trace.attempt}</span>
                     <span>{trace.latencyMs} ms</span>
                     <span>{formatDate(trace.startedAt)}</span>
@@ -119,14 +134,14 @@ export function LlmTraceInspector({
       </aside>
 
       <section className="flex min-h-0 flex-1 flex-col gap-4">
-        <div className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm">
+        <div className="rounded-xl border bg-background p-5 shadow-sm">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div className="space-y-2">
-              <h2 className="text-sm font-semibold uppercase tracking-[0.24em] text-slate-500">
+              <h2 className="text-sm font-semibold uppercase tracking-[0.24em] text-muted-foreground">
                 Session Metadata
               </h2>
-              <div className="font-mono text-xs text-slate-700">execution: {session?.executionId ?? "n/a"}</div>
-              <div className="font-mono text-xs text-slate-700">conversation: {session?.conversationId ?? "n/a"}</div>
+              <div className="font-mono text-xs text-foreground/80">execution: {session?.executionId ?? "n/a"}</div>
+              <div className="font-mono text-xs text-foreground/80">conversation: {session?.conversationId ?? "n/a"}</div>
             </div>
 
             <div className="flex flex-wrap items-center gap-2">
@@ -158,8 +173,8 @@ export function LlmTraceInspector({
               </div>
 
               <div className="grid gap-4 xl:grid-cols-4">
-                <div className="rounded-2xl bg-slate-50 p-4">
-                  <div className="text-xs uppercase tracking-[0.22em] text-slate-500">Tokens</div>
+                <div className="rounded-2xl bg-muted/30 p-4">
+                  <div className="text-xs uppercase tracking-[0.22em] text-muted-foreground">Tokens</div>
                   <div className="mt-3 space-y-1 text-sm">
                     <div>prompt: {formatCount(selectedTrace.promptTokens)}</div>
                     <div>completion: {formatCount(selectedTrace.completionTokens)}</div>
@@ -168,14 +183,14 @@ export function LlmTraceInspector({
                   </div>
                 </div>
 
-                <div className="rounded-2xl bg-slate-50 p-4 xl:col-span-3">
-                  <div className="text-xs uppercase tracking-[0.22em] text-slate-500">Parsed Result</div>
+                <div className="rounded-2xl bg-muted/30 p-4 xl:col-span-3">
+                  <div className="text-xs uppercase tracking-[0.22em] text-muted-foreground">Parsed Result</div>
                   <div className="mt-3 grid gap-3 lg:grid-cols-2">
-                    <div className="rounded-xl bg-white p-3">
-                      <div className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Text</div>
+                    <div className="rounded-xl border bg-background p-3">
+                      <div className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Text</div>
                       <div
                         className={cn(
-                          "mt-2 font-mono text-xs leading-6 text-slate-800",
+                          "mt-2 font-mono text-xs leading-6 text-foreground",
                           wrapText ? "whitespace-pre-wrap break-words" : "overflow-x-auto whitespace-pre"
                         )}
                       >
@@ -183,11 +198,11 @@ export function LlmTraceInspector({
                       </div>
                     </div>
 
-                    <div className="rounded-xl bg-white p-3">
-                      <div className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+                    <div className="rounded-xl border bg-background p-3">
+                      <div className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
                         Tool Calls
                       </div>
-                      <div className="mt-2 max-h-40 overflow-auto rounded-lg border border-slate-200">
+                      <div className="mt-2 max-h-40 overflow-auto rounded-lg border">
                         <JsonTreePanel
                           title="Tool Calls"
                           value={selectedTrace.parsedToolCalls ?? []}
@@ -202,7 +217,7 @@ export function LlmTraceInspector({
               </div>
             </div>
           ) : (
-            <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-6 text-sm text-slate-500">
+            <div className="rounded-2xl border border-dashed bg-muted/30 p-6 text-sm text-muted-foreground">
               {loading ? "Loading raw traces..." : emptyTitle}
             </div>
           )}
@@ -231,7 +246,7 @@ export function LlmTraceInspector({
               />
             </>
           ) : (
-            <div className="flex min-h-[320px] items-center justify-center rounded-[28px] border border-dashed border-slate-200 bg-white p-10 text-center text-sm text-slate-500">
+            <div className="flex min-h-[320px] items-center justify-center rounded-xl border border-dashed bg-background p-10 text-center text-sm text-muted-foreground">
               {loading ? "Loading raw traces..." : emptyDescription}
             </div>
           )}

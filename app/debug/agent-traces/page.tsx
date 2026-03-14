@@ -89,15 +89,15 @@ export default function AgentTraceDebugPage() {
   React.useEffect(() => subscribeAgentTraceEvents(handleTraceEvent), [handleTraceEvent])
 
   return (
-    <div className="flex min-h-screen flex-col bg-[linear-gradient(180deg,_#f8fbff_0%,_#edf3f9_100%)] text-slate-900">
-      <header className="border-b border-slate-200/80 bg-white/92 backdrop-blur">
+    <div className="flex min-h-screen flex-col bg-background text-foreground">
+      <header className="border-b bg-background/95 backdrop-blur">
         <div className="mx-auto flex w-full max-w-[1900px] items-center justify-between gap-4 px-6 py-5">
           <div className="space-y-2">
-            <p className="text-xs font-semibold uppercase tracking-[0.28em] text-slate-500">
+            <p className="text-xs font-semibold uppercase tracking-[0.28em] text-muted-foreground">
               Raw LLM Inspector
             </p>
             <div className="flex flex-wrap items-center gap-2">
-              <h1 className="font-mono text-sm text-slate-700">
+              <h1 className="font-mono text-sm text-foreground/80">
                 {sessionId ?? "Waiting for an agent session"}
               </h1>
               {sourceLabel ? <Badge variant="outline">{sourceLabel}</Badge> : null}

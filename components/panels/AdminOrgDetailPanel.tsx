@@ -20,6 +20,7 @@ import type {
 } from "@/lib/types"
 import { ChatMessage } from "@/components/chat/ChatMessage"
 import { LlmTraceInspector } from "@/components/debug/LlmTraceInspector"
+import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Spinner } from "@/components/ui/spinner"
@@ -61,9 +62,30 @@ import { toast } from "sonner"
 
 const ALL_AGENTS_VALUE = "__all_agents__"
 const CONVERSATION_PAGE_SIZE = 50
+const selectableCardBaseClass = "w-full rounded-2xl border p-3 text-left transition-colors"
+const selectableCardActiveClass = "border-primary/40 bg-primary/10 text-foreground shadow-sm"
+const selectableCardInactiveClass = "border-border bg-background hover:border-foreground/30 hover:bg-muted/30"
+const selectableSubtextActiveClass = "text-foreground/80"
+const selectableMetaActiveClass = "text-foreground/70"
+const selectedMessageWrapperClass = "border-primary/40 bg-primary/5"
 
 type AdminDetailTab = "agents" | "conversations"
 type MobileConversationPane = "transcript" | "trace"
+
+function getSelectableCardClass(active: boolean): string {
+  return cn(
+    selectableCardBaseClass,
+    active ? selectableCardActiveClass : selectableCardInactiveClass
+  )
+}
+
+function getSelectableSubtextClass(active: boolean): string {
+  return active ? selectableSubtextActiveClass : "text-muted-foreground"
+}
+
+function getSelectableMetaClass(active: boolean): string {
+  return active ? selectableMetaActiveClass : "text-muted-foreground"
+}
 
 function formatDateTime(value: string | null): string {
   if (!value) return "—"
@@ -575,25 +597,21 @@ export function AdminOrgDetailPanel({ orgId }: AdminOrgDetailPanelProps) {
                   setSelectedConversationId(conversation.id)
                   setMobileConversationPane("transcript")
                 }}
-                className={`w-full rounded-2xl border p-3 text-left transition-colors ${
-                  isActive
-                    ? "border-slate-900 bg-slate-900 text-white shadow-sm"
-                    : "border-border bg-background hover:border-foreground/30 hover:bg-muted/30"
-                }`}
+                className={getSelectableCardClass(isActive)}
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
                     <div className="truncate text-sm font-semibold">{conversation.participantLabel}</div>
-                    <div className={`mt-1 text-xs ${isActive ? "text-slate-300" : "text-muted-foreground"}`}>
+                    <div className={cn("mt-1 text-xs", getSelectableSubtextClass(isActive))}>
                       {conversation.agentName} • {formatChannelLabel(conversation.channel)}
                     </div>
                   </div>
-                  <IconChevronRight className={`mt-0.5 size-4 shrink-0 ${isActive ? "text-slate-300" : "text-muted-foreground"}`} />
+                  <IconChevronRight className={cn("mt-0.5 size-4 shrink-0", getSelectableMetaClass(isActive))} />
                 </div>
-                <div className={`mt-3 line-clamp-2 text-xs leading-5 ${isActive ? "text-slate-200" : "text-muted-foreground"}`}>
+                <div className={cn("mt-3 line-clamp-2 text-xs leading-5", getSelectableSubtextClass(isActive))}>
                   {conversation.summary?.trim() || "No summary available yet."}
                 </div>
-                <div className={`mt-3 flex flex-wrap items-center gap-2 text-[11px] ${isActive ? "text-slate-300" : "text-muted-foreground"}`}>
+                <div className={cn("mt-3 flex flex-wrap items-center gap-2 text-[11px]", getSelectableMetaClass(isActive))}>
                   <span>{formatDateTime(conversation.lastMessageAt ?? conversation.startedAt)}</span>
                   {conversation.hasTranscript ? <Badge variant="outline">Transcript</Badge> : null}
                   {conversation.hasRecording ? <Badge variant="outline">Recording</Badge> : null}
@@ -680,7 +698,7 @@ export function AdminOrgDetailPanel({ orgId }: AdminOrgDetailPanelProps) {
                 }
                 className={`rounded-2xl border p-3 transition-colors ${
                   traceable ? "cursor-pointer hover:border-foreground/40" : ""
-                } ${isSelected ? "border-slate-900 bg-slate-50" : "border-transparent"}`}
+                } ${isSelected ? selectedMessageWrapperClass : "border-transparent"}`}
               >
                 <ChatMessage
                   role={message.role}
