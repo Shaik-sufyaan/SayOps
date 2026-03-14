@@ -70,10 +70,6 @@ export interface Agent {
   name: string
   description: string | null
   system_prompt: string
-  custom_instructions: string | null
-  personality: string | null
-  escalation_rules: string | null
-  knowledge_base: string | null
   has_knowledge_base?: boolean
   enabled_connectors?: string[]
   capabilities: string[]
@@ -91,6 +87,32 @@ export interface Agent {
   created_at: string
   updated_at: string
 }
+
+export interface AgentCreationOwnerContext {
+  top_intents?: string[]
+  policies?: string[]
+  tone_voice?: string
+  escalation_rules?: string[]
+  additional_instructions?: string[]
+}
+
+export interface AgentCreationRequest {
+  requested_name?: string
+  website_url?: string
+  owner_context?: AgentCreationOwnerContext
+  document_ids?: string[]
+  capabilities_override?: string[]
+}
+
+export type AgentCreationStreamEvent =
+  | { type: 'session_created'; session_id: string }
+  | { type: 'waiting_for_docs'; session_id: string; pending_document_ids: string[]; elapsed_ms: number; timeout_ms: number }
+  | { type: 'website_analysis'; session_id: string; status: 'started' | 'completed'; website_url: string; canonical_brief_gcs_path?: string; warnings?: string[] }
+  | { type: 'eva_research'; session_id: string; status: 'started' | 'completed'; scratchpad_gcs_path?: string; output_preview?: string }
+  | { type: 'prompt_synthesis'; session_id: string; status: 'started' | 'completed'; draft_system_prompt_gcs_path?: string; final_system_prompt_gcs_path?: string; name?: string; description?: string; quality_warnings?: string[] }
+  | { type: 'provisioning'; session_id: string; status: 'started' | 'completed'; agent_id?: string }
+  | { type: 'done'; session_id: string; agent: Agent }
+  | { type: 'error'; session_id: string; code: string; message: string; pending_document_ids?: string[] }
 
 export interface Conversation {
   id: string

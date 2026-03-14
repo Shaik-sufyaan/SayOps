@@ -13,36 +13,15 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Textarea } from "@/components/ui/textarea"
-import { chatWithAgent, createAgent, requestAgentNumber, uploadFiles } from "@/lib/api-client"
+import { AssignExistingNumberDialog } from "@/components/agent/AssignExistingNumberDialog"
+import { createAgentStream, requestAgentNumber, uploadFiles } from "@/lib/api-client"
 import { useViewParams } from "@/hooks/useViewParams"
 import { useAgentsStore } from "@/stores/agentsStore"
-import type { Agent } from "@/lib/types"
+import type { Agent, AgentCreationStreamEvent } from "@/lib/types"
 import { toast } from "sonner"
 import { CallForwardingGuide } from "@/components/CallForwardingGuide"
 
 const DRAFT_STORAGE_KEY = "create-agent-draft-v1"
-
-type WebsiteInsights = {
-  summary?: string
-  website_facts?: string[]
-  top_intents?: string[]
-  policies?: string[]
-  tone_voice?: string
-  escalation_rules?: string[]
-  additional_instructions?: string[]
-}
-
-function parseJsonFromText(text: string): any | null {
-  const trimmed = text.trim()
-  const plain = trimmed.startsWith("```")
-    ? trimmed.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "")
-    : trimmed
-  try {
-    return JSON.parse(plain)
-  } catch {
-    return null
-  }
-}
 
 function formatPhoneForDisplay(phone: string | null): string {
   if (!phone) return "No number assigned"
@@ -56,9 +35,47 @@ function formatPhoneForDisplay(phone: string | null): string {
   return phone
 }
 
+function splitLines(value: string): string[] {
+  return value
+    .split("\n")
+    .map((entry) => entry.trim())
+    .filter(Boolean)
+}
+
+function describeCreationEvent(event: AgentCreationStreamEvent): string {
+  switch (event.type) {
+    case "session_created":
+      return `Creation session started (${event.session_id})`
+    case "waiting_for_docs":
+      return `Waiting for ${event.pending_document_ids.length} uploaded document${event.pending_document_ids.length === 1 ? "" : "s"} to finish processing...`
+    case "website_analysis":
+      return event.status === "started"
+        ? `Analyzing ${event.website_url}...`
+        : "Website analysis completed."
+    case "eva_research":
+      return event.status === "started"
+        ? "Eva is researching your sources..."
+        : "Eva research completed."
+    case "prompt_synthesis":
+      return event.status === "started"
+        ? "Synthesizing the final system prompt..."
+        : "System prompt synthesized."
+    case "provisioning":
+      return event.status === "started"
+        ? "Provisioning the new agent..."
+        : "Agent provisioned."
+    case "done":
+      return "Agent created successfully."
+    case "error":
+      return event.message
+    default:
+      return "Creating agent..."
+  }
+}
+
 export function CreateAgentPanel() {
   const { setView } = useViewParams()
-  const { addAgent } = useAgentsStore()
+  const { addAgent, updateAgent: updateAgentInStore } = useAgentsStore()
 
   const [currentStep, setCurrentStep] = useState(0)
   const [name, setName] = useState("")
@@ -68,10 +85,9 @@ export function CreateAgentPanel() {
   const [toneVoice, setToneVoice] = useState("")
   const [escalationRules, setEscalationRules] = useState("")
   const [additionalInstructions, setAdditionalInstructions] = useState("")
-  const [websiteInsights, setWebsiteInsights] = useState<WebsiteInsights | null>(null)
   const [files, setFiles] = useState<File[]>([])
   const [isCreating, setIsCreating] = useState(false)
-  const [isAnalyzingWebsite, setIsAnalyzingWebsite] = useState(false)
+  const [creationStatus, setCreationStatus] = useState("")
 
   const [showSuccess, setShowSuccess] = useState(false)
   const [createdAgent, setCreatedAgent] = useState<Agent | null>(null)
@@ -105,7 +121,6 @@ export function CreateAgentPanel() {
         toneVoice,
         escalationRules,
         additionalInstructions,
-        websiteInsights,
         fileNames: files.map((f) => f.name),
         updatedAt: Date.now(),
       }
@@ -120,7 +135,6 @@ export function CreateAgentPanel() {
       policies,
       toneVoice,
       topIntents,
-      websiteInsights,
       websiteUrl,
     ]
   )
@@ -138,7 +152,6 @@ export function CreateAgentPanel() {
       setToneVoice(parsed.toneVoice || "")
       setEscalationRules(parsed.escalationRules || "")
       setAdditionalInstructions(parsed.additionalInstructions || "")
-      setWebsiteInsights(parsed.websiteInsights || null)
       setCurrentStep(Math.max(0, Math.min((parsed.stepIndex as number) || 0, steps.length - 1)))
       toast.success("Loaded your saved draft")
     } catch {
@@ -159,75 +172,10 @@ export function CreateAgentPanel() {
     setTimeout(() => persistDraft(), 0)
   }
 
-  const analyzeWebsite = async (url: string) => {
-    const trimmed = url.trim()
-    if (!trimmed) return
-
-    setIsAnalyzingWebsite(true)
-    try {
-      const prompt = [
-        "Use your website analysis tooling to analyze this business URL:",
-        trimmed,
-        "",
-        "Return strict JSON only with keys:",
-        "{",
-        '  "summary": string,',
-        '  "website_facts": string[],',
-        '  "top_intents": string[],',
-        '  "policies": string[],',
-        '  "tone_voice": string,',
-        '  "escalation_rules": string[],',
-        '  "additional_instructions": string[]',
-        "}",
-        "If unknown, return empty arrays or empty strings.",
-      ].join("\n")
-
-      const result = await chatWithAgent(prompt, "super")
-      const parsed = parseJsonFromText(result.output)
-      if (!parsed || typeof parsed !== "object") {
-        toast.warning("Website analyzed, but structured insights were not returned.")
-        return
-      }
-
-      const insights: WebsiteInsights = {
-        summary: typeof parsed.summary === "string" ? parsed.summary : "",
-        website_facts: Array.isArray(parsed.website_facts) ? parsed.website_facts.filter((v: any) => typeof v === "string") : [],
-        top_intents: Array.isArray(parsed.top_intents) ? parsed.top_intents.filter((v: any) => typeof v === "string") : [],
-        policies: Array.isArray(parsed.policies) ? parsed.policies.filter((v: any) => typeof v === "string") : [],
-        tone_voice: typeof parsed.tone_voice === "string" ? parsed.tone_voice : "",
-        escalation_rules: Array.isArray(parsed.escalation_rules) ? parsed.escalation_rules.filter((v: any) => typeof v === "string") : [],
-        additional_instructions: Array.isArray(parsed.additional_instructions)
-          ? parsed.additional_instructions.filter((v: any) => typeof v === "string")
-          : [],
-      }
-
-      setWebsiteInsights(insights)
-
-      if (!topIntents.trim() && insights.top_intents?.length) setTopIntents(insights.top_intents.join("\n"))
-      if (!policies.trim() && insights.policies?.length) setPolicies(insights.policies.join("\n"))
-      if (!toneVoice.trim() && insights.tone_voice) setToneVoice(insights.tone_voice)
-      if (!escalationRules.trim() && insights.escalation_rules?.length) setEscalationRules(insights.escalation_rules.join("\n"))
-      if (!additionalInstructions.trim() && insights.additional_instructions?.length) {
-        setAdditionalInstructions(insights.additional_instructions.join("\n"))
-      }
-
-      toast.success("Website insights added to your draft")
-    } catch {
-      toast.warning("Website analysis failed. You can continue manually.")
-    } finally {
-      setIsAnalyzingWebsite(false)
-      setTimeout(() => persistDraft(), 0)
-    }
-  }
-
-  const handleNext = async () => {
+  const handleNext = () => {
     if (currentStep === 0 && !name.trim()) {
       toast.error("Please enter an agent name")
       return
-    }
-
-    if (currentStep === 1 && websiteUrl.trim() && !websiteInsights && !isAnalyzingWebsite) {
-      await analyzeWebsite(websiteUrl)
     }
 
     const next = Math.min(currentStep + 1, steps.length - 1)
@@ -247,11 +195,6 @@ export function CreateAgentPanel() {
     }
   }
 
-  const section = (title: string, value?: string | null): string => {
-    const text = (value || "").trim()
-    return text ? `${title}:\n${text}` : ""
-  }
-
   const handleCreate = async () => {
     if (!name.trim()) {
       toast.error("Please enter a name for your agent")
@@ -259,40 +202,34 @@ export function CreateAgentPanel() {
     }
 
     setIsCreating(true)
+    setCreationStatus(files.length > 0 ? "Uploading documents..." : "Starting agent creation...")
 
     try {
-      const websiteFacts = websiteInsights?.website_facts?.length ? websiteInsights.website_facts.join("\n") : ""
-
-      const knowledgeBase = [
-        section("Policies", policies),
-        section("Website Facts", websiteFacts),
-        section("Website Summary", websiteInsights?.summary || ""),
-      ]
-        .filter(Boolean)
-        .join("\n\n")
-
-      const customInstructions = [
-        section("Top Intents", topIntents),
-        section("Additional Instructions", additionalInstructions),
-      ]
-        .filter(Boolean)
-        .join("\n\n")
-
-      const agent = await createAgent({
-        name: name.trim(),
-        capabilities: ["document_search", "memory", "customer_memory", "adaptive_memory"],
-        custom_instructions: customInstructions || undefined,
-        personality: toneVoice.trim() || undefined,
-        escalation_rules: escalationRules.trim() || undefined,
-        knowledge_base: knowledgeBase || undefined,
-        has_knowledge_base: Boolean(knowledgeBase),
-      })
-
+      const uploadedDocumentIds: string[] = []
       if (files.length > 0) {
         for (const file of files) {
-          await uploadFiles([file], agent.organization_id)
+          const uploaded = await uploadFiles([file])
+          uploadedDocumentIds.push(uploaded.documentId)
         }
       }
+
+      const { agent } = await createAgentStream(
+        {
+          requested_name: name.trim(),
+          website_url: websiteUrl.trim() || undefined,
+          owner_context: {
+            top_intents: splitLines(topIntents),
+            policies: splitLines(policies),
+            tone_voice: toneVoice.trim() || undefined,
+            escalation_rules: splitLines(escalationRules),
+            additional_instructions: splitLines(additionalInstructions),
+          },
+          document_ids: uploadedDocumentIds,
+        },
+        {
+          onEvent: (event) => setCreationStatus(describeCreationEvent(event)),
+        },
+      )
 
       setCreatedAgent(agent)
       addAgent(agent)
@@ -302,6 +239,7 @@ export function CreateAgentPanel() {
       toast.success("Agent created successfully!")
     } catch (err: any) {
       toast.error(err.message || "Failed to create agent")
+    } finally {
       setIsCreating(false)
     }
   }
@@ -318,6 +256,13 @@ export function CreateAgentPanel() {
     } finally {
       setIsRequestingNumber(false)
     }
+  }
+
+  const handleAssignedNumber = (agent: Agent) => {
+    setCreatedAgent(agent)
+    setDisplayPhone(formatPhoneForDisplay(agent.phone_number))
+    setNumberRequested(false)
+    updateAgentInStore(agent.id, agent)
   }
 
   if (showSuccess && createdAgent) {
@@ -342,6 +287,15 @@ export function CreateAgentPanel() {
               </div>
             )}
           </div>
+
+          <AssignExistingNumberDialog
+            agentId={createdAgent.id}
+            agentName={createdAgent.name}
+            currentPhoneNumber={createdAgent.phone_number}
+            onAssigned={handleAssignedNumber}
+            buttonSize="lg"
+            buttonClassName="w-full"
+          />
 
           <Button
             size="lg"
@@ -410,7 +364,7 @@ export function CreateAgentPanel() {
                   onChange={(e) => setWebsiteUrl(e.target.value)}
                 />
                 <p className="text-xs text-muted-foreground">
-                  We will use your existing website analysis flow to prefill relevant fields.
+                  Eva will analyze this website during creation and merge it with your notes and uploaded docs.
                 </p>
               </div>
             )}
@@ -516,21 +470,19 @@ export function CreateAgentPanel() {
               </div>
             )}
 
+            {isCreating && creationStatus ? (
+              <div className="rounded-lg border bg-muted/50 px-3 py-2 text-sm text-muted-foreground">
+                {creationStatus}
+              </div>
+            ) : null}
+
             <div className="flex items-center justify-between gap-3 pt-2">
-              <Button variant="outline" onClick={handleBack} disabled={currentStep === 0 || isCreating || isAnalyzingWebsite}>
+              <Button variant="outline" onClick={handleBack} disabled={currentStep === 0 || isCreating}>
                 Back
               </Button>
 
               {currentStep < steps.length - 1 ? (
-                <Button onClick={handleNext} disabled={isCreating || isAnalyzingWebsite}>
-                  {isAnalyzingWebsite ? (
-                    <>
-                      <IconLoader2 className="mr-2 size-4 animate-spin" /> Analyzing Website...
-                    </>
-                  ) : (
-                    "Next"
-                  )}
-                </Button>
+                <Button onClick={handleNext} disabled={isCreating}>Next</Button>
               ) : (
                 <Button size="lg" onClick={handleCreate} disabled={isCreating} className="h-11">
                   {isCreating ? (

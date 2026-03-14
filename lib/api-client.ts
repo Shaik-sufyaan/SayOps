@@ -2,6 +2,8 @@ import { auth } from "@/lib/firebase"
 import { publishAgentTraceError, publishAgentTraceSession } from "@/lib/agent-trace-debug"
 import type {
   Agent,
+  AgentCreationRequest,
+  AgentCreationStreamEvent,
   Conversation,
   Message,
   DashboardStats,
@@ -45,6 +47,11 @@ interface ChatStreamEvent {
   tool_end?: { name: string; result: unknown; error?: boolean }
   done?: ChatResponse
   error?: string
+}
+
+export interface AgentCreationStreamCallbacks {
+  onEvent?: (event: AgentCreationStreamEvent) => void
+  onDone?: (agent: Agent, sessionId: string) => void
 }
 
 function buildApiUrl(endpoint: string): string {
@@ -238,22 +245,98 @@ export async function fetchAgent(id: string): Promise<Agent> {
   return apiFetch<Agent>(`/agents/${id}`)
 }
 
-export async function createAgent(data: { 
-  name: string; 
-  description?: string;
-  capabilities: string[];
-  system_prompt?: string;
-  personality?: string;
-  custom_instructions?: string;
-  escalation_rules?: string;
-  knowledge_base?: string;
-  enabled_connectors?: string[];
-  has_knowledge_base?: boolean;
-}): Promise<Agent> {
-  return apiFetch<Agent>("/agents", {
+export async function createAgentStream(
+  data: AgentCreationRequest,
+  callbacks?: AgentCreationStreamCallbacks,
+): Promise<{ agent: Agent; sessionId: string }> {
+  const headers = await getAuthHeaders()
+  const response = await fetch(buildApiUrl("/agents/stream"), {
     method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "text/event-stream",
+      ...headers,
+    },
     body: JSON.stringify(data),
   })
+
+  if (!response.ok) {
+    throw new Error(await parseErrorMessage(response))
+  }
+  if (!response.body) {
+    throw new Error("Agent creation stream response body missing")
+  }
+
+  const reader = response.body.getReader()
+  const decoder = new TextDecoder()
+  let buffer = ""
+  let doneEvent: Extract<AgentCreationStreamEvent, { type: "done" }> | null = null
+  let errorEvent: Extract<AgentCreationStreamEvent, { type: "error" }> | null = null
+
+  try {
+    while (true) {
+      const { value, done } = await reader.read()
+      buffer += decoder.decode(value ?? new Uint8Array(), { stream: !done })
+      buffer = buffer.replace(/\r\n/g, "\n")
+
+      let boundaryIndex = buffer.indexOf("\n\n")
+      while (boundaryIndex !== -1) {
+        const rawEvent = buffer.slice(0, boundaryIndex)
+        buffer = buffer.slice(boundaryIndex + 2)
+
+        const dataLine = rawEvent
+          .split("\n")
+          .filter((line) => line.startsWith("data:"))
+          .map((line) => line.slice(5).trimStart())
+          .join("\n")
+
+        if (!dataLine) {
+          boundaryIndex = buffer.indexOf("\n\n")
+          continue
+        }
+
+        if (dataLine === "[DONE]") {
+          boundaryIndex = buffer.indexOf("\n\n")
+          continue
+        }
+
+        let event: AgentCreationStreamEvent
+        try {
+          event = JSON.parse(dataLine)
+        } catch {
+          throw new Error("Invalid agent creation stream payload")
+        }
+
+        callbacks?.onEvent?.(event)
+
+        if (event.type === "error") {
+          errorEvent = event
+        }
+        if (event.type === "done") {
+          doneEvent = event
+          callbacks?.onDone?.(event.agent, event.session_id)
+        }
+
+        boundaryIndex = buffer.indexOf("\n\n")
+      }
+
+      if (done) break
+    }
+  } finally {
+    reader.releaseLock()
+  }
+
+  if (errorEvent) {
+    throw new Error(errorEvent.message)
+  }
+  if (!doneEvent) {
+    throw new Error("Agent creation stream ended before final result")
+  }
+
+  return {
+    agent: doneEvent.agent,
+    sessionId: doneEvent.session_id,
+  }
 }
 
 export async function updateAgent(agentId: string, data: Partial<Agent>): Promise<Agent> {

@@ -2,6 +2,7 @@
 
 import * as React from "react"
 import { fetchAgent, requestAgentNumber } from "@/lib/api-client"
+import { AssignExistingNumberDialog } from "@/components/agent/AssignExistingNumberDialog"
 import { AgentSettingsForm } from "@/components/agent/AgentSettingsForm"
 import { TestModeSimulator } from "@/components/agent/TestModeSimulator"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -10,6 +11,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { IconPhone, IconLoader2 } from "@tabler/icons-react"
 import { useViewParams } from "@/hooks/useViewParams"
+import { useAgentsStore } from "@/stores"
 import { Agent } from "@/lib/types"
 import { toast } from "sonner"
 import { CallForwardingGuide } from "@/components/CallForwardingGuide"
@@ -20,6 +22,7 @@ interface AgentDetailPanelProps {
 
 export function AgentDetailPanel({ agentId }: AgentDetailPanelProps) {
   const { setView } = useViewParams()
+  const { updateAgent: updateAgentInStore } = useAgentsStore()
   const [agent, setAgent] = React.useState<Agent | null>(null)
   const [loading, setLoading] = React.useState(true)
   const [isRequesting, setIsRequesting] = React.useState(false)
@@ -36,6 +39,11 @@ export function AgentDetailPanel({ agentId }: AgentDetailPanelProps) {
     } finally {
       setIsRequesting(false)
     }
+  }
+
+  const handleAssignedNumber = (updatedAgent: Agent) => {
+    setAgent(updatedAgent)
+    updateAgentInStore(updatedAgent.id, updatedAgent)
   }
 
   React.useEffect(() => {
@@ -85,6 +93,7 @@ export function AgentDetailPanel({ agentId }: AgentDetailPanelProps) {
             Manage agent settings and test interactions.
           </p>
         </div>
+<<<<<<< HEAD
         <div className="flex flex-col items-end gap-0.5 pt-1">
           <div className="flex items-center gap-2">
             {agent.phone_number ? (
@@ -97,7 +106,18 @@ export function AgentDetailPanel({ agentId }: AgentDetailPanelProps) {
                 <IconPhone className="size-3.5" />
                 Number Pending
               </Badge>
-            ) : (
+            ) : null}
+
+            <AssignExistingNumberDialog
+              agentId={agent.id}
+              agentName={agent.name}
+              currentPhoneNumber={agent.phone_number}
+              onAssigned={handleAssignedNumber}
+              buttonLabel={agent.phone_number ? "Replace Number" : "Use Existing Number"}
+              buttonSize="sm"
+            />
+
+            {!agent.phone_number && !agent.number_requested_at ? (
               <Button
                 variant="outline"
                 size="sm"
@@ -108,7 +128,7 @@ export function AgentDetailPanel({ agentId }: AgentDetailPanelProps) {
                   ? <><IconLoader2 className="mr-2 size-4 animate-spin" />Requesting...</>
                   : <><IconPhone className="mr-2 size-4" />Request Number</>}
               </Button>
-            )}
+            ) : null}
           </div>
           <CallForwardingGuide phoneNumber={agent.phone_number ?? "(Your AI Agent Number)"} />
         </div>
