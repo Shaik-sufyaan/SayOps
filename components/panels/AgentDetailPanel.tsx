@@ -93,7 +93,6 @@ export function AgentDetailPanel({ agentId }: AgentDetailPanelProps) {
             Manage agent settings and test interactions.
           </p>
         </div>
-<<<<<<< HEAD
         <div className="flex flex-col items-end gap-0.5 pt-1">
           <div className="flex items-center gap-2">
             {agent.phone_number ? (
