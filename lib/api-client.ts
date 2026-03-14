@@ -787,6 +787,12 @@ export async function fetchPlatformHealth(): Promise<import("@/lib/types").Platf
   return apiFetch<import("@/lib/types").PlatformHealthData>('/admin/platform-health')
 }
 
+export async function refreshPlatformHealth(): Promise<{ success: boolean; services_total: number; succeeded: number; failed: number }> {
+  return apiFetch<{ success: boolean; services_total: number; succeeded: number; failed: number }>('/admin/platform-health/refresh', {
+    method: "POST",
+  })
+}
+
 export async function adminAssignNumber(
   agentId: string,
   data: { phoneNumber: string; vapiPhoneNumberId: string; vapiAssistantId?: string }
