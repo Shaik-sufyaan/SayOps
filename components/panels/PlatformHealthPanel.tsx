@@ -3,12 +3,13 @@
 import React, { useEffect, useState, useCallback } from "react"
 import { useAuth } from "@/lib/auth-context"
 import { useViewParams } from "@/hooks/useViewParams"
-import { fetchPlatformHealth } from "@/lib/api-client"
+import { fetchPlatformHealth, refreshPlatformHealth } from "@/lib/api-client"
 import type { PlatformHealthData, PlatformServiceHealth, PlatformMetric } from "@/lib/types"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Spinner } from "@/components/ui/spinner"
 import { Progress } from "@/components/ui/progress"
+import { toast } from "sonner"
 import {
   IconHeartbeat,
   IconRefresh,
@@ -71,8 +72,13 @@ const METRIC_LABELS: Record<string, string> = {
   prompt_tokens_month: 'Prompt tokens (month)',
   calls_month:         'API calls (month)',
   budget_usd:          'GCP budget',
+  gross_cost_month:    'Gross cost (month)',
+  credits_applied_month:'Credits applied (month)',
+  net_cost_month:      'Net cost (month)',
+  export_table:        'Export table',
   project_id:          'Project ID',
   status:              'Status',
+  details:             'Details',
   data_source:         'Data source',
 }
 
@@ -101,6 +107,10 @@ function formatBytes(b: number): string {
 
 function getMetricValue(metrics: PlatformMetric[], key: string): number | null {
   return metrics.find(m => m.key === key)?.value ?? null
+}
+
+function isTextMetric(metric: PlatformMetric): boolean {
+  return typeof metric.text === 'string' && metric.text.trim().length > 0
 }
 
 // ── Main panel ────────────────────────────────────────────────────────────────
@@ -138,6 +148,20 @@ export function PlatformHealthPanel() {
     if (isPlatformAdmin) load()
   }, [isPlatformAdmin, load])
 
+  const handleRefresh = useCallback(async () => {
+    setRefreshing(true)
+    setError(null)
+    try {
+      const result = await refreshPlatformHealth()
+      await load(true)
+      toast.success(`Platform metrics refreshed (${result.succeeded}/${result.services_total} services)`)
+    } catch (err: any) {
+      setRefreshing(false)
+      setError(err?.message || 'Failed to refresh platform health data')
+      toast.error(err?.message || 'Failed to refresh platform health data')
+    }
+  }, [load])
+
   if (!isPlatformAdmin) return null
 
   return (
@@ -155,7 +179,7 @@ export function PlatformHealthPanel() {
         <Button
           variant="outline"
           size="sm"
-          onClick={() => load(true)}
+          onClick={handleRefresh}
           disabled={loading || refreshing}
           className="gap-1.5 flex-none"
         >
@@ -269,9 +293,9 @@ function ServiceCard({ service }: { service: PlatformServiceHealth }) {
         {visibleMetrics.length > 0 && (
           <div className="flex flex-col gap-1.5">
             {visibleMetrics.map(m => (
-              <div key={m.key} className="flex items-center justify-between gap-2 text-xs">
-                <span className="text-muted-foreground truncate">{METRIC_LABELS[m.key] ?? m.key}</span>
-                <span className={`font-mono text-[11px] flex-none ${m.error ? 'text-destructive' : ''}`}>
+              <div key={m.key} className={`flex gap-2 text-xs ${isTextMetric(m) ? 'items-start justify-between' : 'items-center justify-between'}`}>
+                <span className={`text-muted-foreground ${isTextMetric(m) ? 'pt-0.5 shrink-0' : 'truncate'}`}>{METRIC_LABELS[m.key] ?? m.key}</span>
+                <span className={`${isTextMetric(m) ? 'max-w-[60%] text-right whitespace-normal break-words leading-4' : 'font-mono text-[11px] flex-none'} ${m.error ? 'text-destructive' : ''}`}>
                   {formatValue(m)}
                 </span>
               </div>
