@@ -790,11 +790,17 @@ export function AdminOrgDetailPanel({ orgId }: AdminOrgDetailPanelProps) {
           <TabsTrigger value="conversations">Conversations</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="agents" className="mt-0 flex min-h-0 flex-1 flex-col">
+        <TabsContent
+          value="agents"
+          className="mt-0 min-h-0 data-[state=active]:flex data-[state=active]:flex-1 data-[state=active]:flex-col"
+        >
           {renderAgentsTab()}
         </TabsContent>
 
-        <TabsContent value="conversations" className="mt-0 flex min-h-0 flex-1 flex-col gap-4">
+        <TabsContent
+          value="conversations"
+          className="mt-0 min-h-0 data-[state=active]:flex data-[state=active]:flex-1 data-[state=active]:flex-col data-[state=active]:gap-4"
+        >
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <h2 className="text-lg font-semibold">Conversation Browser</h2>
