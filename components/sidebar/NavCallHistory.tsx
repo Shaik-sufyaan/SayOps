@@ -13,10 +13,14 @@ export function NavCallHistory() {
   const { view, setView } = useViewParams()
 
   return (
-    <SidebarGroup>
+    <SidebarGroup className="px-4 pt-1">
       <SidebarMenu>
         <SidebarMenuItem>
-          <SidebarMenuButton isActive={view === "calls"} onClick={() => setView("calls")}>
+          <SidebarMenuButton
+            isActive={view === "calls"}
+            onClick={() => setView("calls")}
+            className="pl-4"
+          >
             <IconPhone className="size-4" />
             <span>Calls</span>
           </SidebarMenuButton>

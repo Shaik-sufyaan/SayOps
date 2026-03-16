@@ -10,14 +10,17 @@ import {
 } from "@tabler/icons-react"
 import { formatDistanceToNowStrict } from "date-fns"
 
+import { CallTranscript } from "@/components/call-transcript"
 import { CallHistoryTable } from "@/components/call-history-table"
 import {
   fetchAgents,
   fetchConversations,
+  fetchMessages,
   mapConversationToCallRecord,
 } from "@/lib/api-client"
-import type { CallRecord } from "@/lib/types"
+import type { CallRecord, Conversation, Message } from "@/lib/types"
 import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
 import {
   Card,
   CardContent,
@@ -25,6 +28,9 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
+
+const LIVE_CALL_STALE_MS = 20 * 60 * 1000
+const TERMINAL_VAPI_STATUSES = new Set(["ended", "completed", "failed", "canceled"])
 
 function StatCard({
   icon,
@@ -62,44 +68,229 @@ function getChannelLabel(call: CallRecord): string {
   return call.channel === "voice" ? "Phone" : "Web Chat"
 }
 
+function getTimestamp(value: unknown): number | null {
+  if (typeof value !== "string" || value.trim().length === 0) return null
+  const parsed = Date.parse(value)
+  return Number.isFinite(parsed) ? parsed : null
+}
+
+function getConversationActivityTimestamp(conversation: Conversation): number {
+  const candidates = [
+    getTimestamp(conversation.last_message_at),
+    getTimestamp(conversation.metadata?.vapi_last_status_at),
+    getTimestamp(conversation.started_at),
+    getTimestamp(conversation.updated_at),
+  ].filter((value): value is number => value !== null)
+
+  return candidates.length > 0 ? Math.max(...candidates) : 0
+}
+
+function getConversationLiveStatusLabel(conversation: Conversation): string | null {
+  const rawStatus = typeof conversation.metadata?.vapi_status === "string"
+    ? conversation.metadata.vapi_status.trim().toLowerCase()
+    : ""
+
+  if (!rawStatus || TERMINAL_VAPI_STATUSES.has(rawStatus)) return null
+  return rawStatus.replace(/[-_]+/g, " ")
+}
+
+function isLiveVoiceConversation(conversation: Conversation, now = Date.now()): boolean {
+  if (conversation.channel !== "voice") return false
+  if (conversation.status === "completed" || conversation.status === "archived") return false
+  if (typeof conversation.metadata?.vapi_end_of_call_report_at === "string") return false
+
+  const vapiStatus = typeof conversation.metadata?.vapi_status === "string"
+    ? conversation.metadata.vapi_status.trim().toLowerCase()
+    : ""
+
+  if (vapiStatus && TERMINAL_VAPI_STATUSES.has(vapiStatus)) return false
+
+  return getConversationActivityTimestamp(conversation) >= now - LIVE_CALL_STALE_MS
+}
+
+function hasVoiceHistoryEvidence(conversation: Conversation): boolean {
+  if (conversation.channel !== "voice") return true
+  if (conversation.status === "completed" || conversation.status === "archived") return true
+  if (typeof conversation.metadata?.vapi_end_of_call_report_at === "string") return true
+
+  const vapiStatus = typeof conversation.metadata?.vapi_status === "string"
+    ? conversation.metadata.vapi_status.trim().toLowerCase()
+    : ""
+
+  if (vapiStatus && TERMINAL_VAPI_STATUSES.has(vapiStatus)) return true
+
+  const hasRecording =
+    (typeof conversation.metadata?.vapi_recording_url === "string" && conversation.metadata.vapi_recording_url.trim().length > 0) ||
+    (typeof conversation.metadata?.recordingUrl === "string" && conversation.metadata.recordingUrl.trim().length > 0)
+
+  if (hasRecording) return true
+
+  return (
+    Array.isArray(conversation.metadata?.vapi_transcript) && conversation.metadata.vapi_transcript.length > 0
+  ) || (
+    typeof conversation.metadata?.vapi_transcript === "string" && conversation.metadata.vapi_transcript.trim().length > 0
+  )
+}
+
 export function HistoryPanel() {
-  const [calls, setCalls] = React.useState<CallRecord[]>([])
+  const [conversations, setConversations] = React.useState<Conversation[]>([])
+  const [agentNameById, setAgentNameById] = React.useState<Map<string, string>>(new Map())
+  const [liveMessagesById, setLiveMessagesById] = React.useState<Record<string, Message[]>>({})
+  const [liveMessagesLoading, setLiveMessagesLoading] = React.useState<Record<string, boolean>>({})
   const [loading, setLoading] = React.useState(true)
 
-  React.useEffect(() => {
-    async function load() {
-      try {
-        const [agents, conversations] = await Promise.all([
-          fetchAgents(),
-          fetchConversations(),
-        ])
+  const loadCalls = React.useCallback(async () => {
+    try {
+      const [agents, nextConversations] = await Promise.all([
+        fetchAgents(),
+        fetchConversations(),
+      ])
 
-        const agentNameById = new Map(agents.map((agent) => [agent.id, agent.name]))
-        const nextCalls = conversations
-          .filter((conversation) => conversation.channel === "voice" || conversation.channel === "web")
-          .map((conversation) => mapConversationToCallRecord(conversation, agentNameById.get(conversation.agent_id)))
-          .sort((left, right) => new Date(right.timestamp).getTime() - new Date(left.timestamp).getTime())
+      const nextAgentNameById = new Map(agents.map((agent) => [agent.id, agent.name]))
+      const visibleConversations = nextConversations.filter(
+        (conversation) => conversation.channel === "voice" || conversation.channel === "web"
+      )
 
-        setCalls(nextCalls)
-      } catch (err) {
-        console.error("Failed to load calls:", err)
-      } finally {
-        setLoading(false)
-      }
+      React.startTransition(() => {
+        setAgentNameById(nextAgentNameById)
+        setConversations(visibleConversations)
+      })
+    } catch (err) {
+      console.error("Failed to load calls:", err)
+    } finally {
+      setLoading(false)
     }
-
-    void load()
   }, [])
 
+  React.useEffect(() => {
+    void loadCalls()
+
+    const intervalId = window.setInterval(() => {
+      void loadCalls()
+    }, 10000)
+
+    return () => {
+      window.clearInterval(intervalId)
+    }
+  }, [loadCalls])
+
+  const sortedConversations = React.useMemo(
+    () => [...conversations].sort(
+      (left, right) => getConversationActivityTimestamp(right) - getConversationActivityTimestamp(left)
+    ),
+    [conversations]
+  )
+
+  const liveConversations = React.useMemo(
+    () => sortedConversations.filter((conversation) => isLiveVoiceConversation(conversation)),
+    [sortedConversations]
+  )
+
+  const liveCallIds = React.useMemo(
+    () => new Set(liveConversations.map((conversation) => conversation.id)),
+    [liveConversations]
+  )
+
+  const calls = React.useMemo(
+    () => sortedConversations.map((conversation) => (
+      mapConversationToCallRecord(conversation, agentNameById.get(conversation.agent_id))
+    )),
+    [agentNameById, sortedConversations]
+  )
+
   const presentCalls = React.useMemo(
-    () => calls.filter((call) => call.status === "active" || call.status === "idle"),
-    [calls]
+    () => liveConversations.map((conversation) => (
+      mapConversationToCallRecord(conversation, agentNameById.get(conversation.agent_id))
+    )),
+    [agentNameById, liveConversations]
+  )
+
+  const historyConversationIds = React.useMemo(
+    () => new Set(
+      sortedConversations
+        .filter((conversation) => !liveCallIds.has(conversation.id) && hasVoiceHistoryEvidence(conversation))
+        .map((conversation) => conversation.id)
+    ),
+    [liveCallIds, sortedConversations]
   )
 
   const historyCalls = React.useMemo(
-    () => calls.filter((call) => call.status === "completed" || call.status === "archived"),
-    [calls]
+    () => calls.filter((call) => historyConversationIds.has(call.id)),
+    [calls, historyConversationIds]
   )
+
+  const liveConversationKey = React.useMemo(
+    () => liveConversations.map((conversation) => conversation.id).join(":"),
+    [liveConversations]
+  )
+
+  const loadLiveTranscripts = React.useCallback(async () => {
+    if (liveConversations.length === 0) {
+      React.startTransition(() => {
+        setLiveMessagesById({})
+        setLiveMessagesLoading({})
+      })
+      return
+    }
+
+    const liveIds = new Set(liveConversations.map((conversation) => conversation.id))
+
+    setLiveMessagesLoading((current) => {
+      const next: Record<string, boolean> = {}
+      liveConversations.forEach((conversation) => {
+        next[conversation.id] = current[conversation.id] ?? true
+      })
+      return next
+    })
+
+    const results = await Promise.allSettled(
+      liveConversations.map(async (conversation) => ({
+        conversationId: conversation.id,
+        messages: await fetchMessages(conversation.id),
+      }))
+    )
+
+    React.startTransition(() => {
+      setLiveMessagesById((current) => {
+        const nextEntries = Object.entries(current).filter(([conversationId]) => liveIds.has(conversationId))
+        const next = Object.fromEntries(nextEntries) as Record<string, Message[]>
+
+        results.forEach((result) => {
+          if (result.status !== "fulfilled") return
+          next[result.value.conversationId] = result.value.messages
+        })
+
+        return next
+      })
+
+      setLiveMessagesLoading((current) => {
+        const nextEntries = Object.entries(current).filter(([conversationId]) => liveIds.has(conversationId))
+        const next = Object.fromEntries(nextEntries) as Record<string, boolean>
+
+        liveConversations.forEach((conversation) => {
+          next[conversation.id] = false
+        })
+
+        return next
+      })
+    })
+  }, [liveConversations])
+
+  React.useEffect(() => {
+    void loadLiveTranscripts()
+
+    if (liveConversations.length === 0) {
+      return
+    }
+
+    const intervalId = window.setInterval(() => {
+      void loadLiveTranscripts()
+    }, 4000)
+
+    return () => {
+      window.clearInterval(intervalId)
+    }
+  }, [liveConversationKey, loadLiveTranscripts, liveConversations.length])
 
   const todayCalls = React.useMemo(() => {
     const startOfToday = new Date()
@@ -124,11 +315,11 @@ export function HistoryPanel() {
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Calls</h1>
           <p className="mt-1 text-muted-foreground">
-            Present + history across phone calls and web chats.
+            Live phone calls on top, older call and chat history underneath.
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Badge variant="secondary">{presentCalls.length} present</Badge>
+          <Badge variant="secondary">{presentCalls.length} live now</Badge>
           <Badge variant="outline">{historyCalls.length} in history</Badge>
         </div>
       </div>
@@ -138,7 +329,7 @@ export function HistoryPanel() {
           icon={<IconActivity className="size-4" />}
           title="Present"
           value={String(presentCalls.length)}
-          description="Live or still-open conversations right now."
+          description="Only live phone calls with fresh activity."
         />
         <StatCard
           icon={<IconClock className="size-4" />}
@@ -160,64 +351,104 @@ export function HistoryPanel() {
         />
       </div>
 
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,0.9fr)_minmax(0,1.4fr)]">
-        <Card>
-          <CardHeader>
-            <CardTitle>Present</CardTitle>
-            <CardDescription>Calls and chats that are active or still open.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {presentCalls.length === 0 ? (
-              <div className="rounded-xl border border-dashed p-6 text-sm text-muted-foreground">
-                No active calls or open chats right now.
-              </div>
-            ) : (
-              <div className="flex max-h-[640px] flex-col gap-3 overflow-y-auto pr-1">
-                {presentCalls.map((call) => (
-                  <div key={call.id} className="rounded-2xl border bg-card/60 p-4">
-                    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-2">
-                          <span className="flex size-9 items-center justify-center rounded-full bg-primary/10 text-primary">
-                            {call.channel === "voice" ? <IconPhoneCall className="size-4" /> : <IconMessage className="size-4" />}
-                          </span>
-                          <div className="min-w-0">
-                            <p className="truncate font-medium">{call.agent_name || "Agent"}</p>
-                            <p className="truncate text-sm text-muted-foreground">{call.caller_phone}</p>
+      <Card>
+        <CardHeader>
+          <CardTitle>Present</CardTitle>
+          <CardDescription>
+            Live phone calls only. Each active call keeps its own transcript panel here.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {presentCalls.length === 0 ? (
+            <div className="rounded-xl border border-dashed p-6 text-sm text-muted-foreground">
+              No live phone calls right now.
+            </div>
+          ) : (
+            <div className="grid gap-4 xl:grid-cols-2">
+              {presentCalls.map((call, index) => {
+                const conversation = liveConversations[index]
+                const liveStatusLabel = conversation ? getConversationLiveStatusLabel(conversation) : null
+                const messages = liveMessagesById[call.id] ?? []
+                const lastActivity = conversation?.last_message_at
+                  ?? (typeof conversation?.metadata?.vapi_last_status_at === "string"
+                    ? conversation.metadata.vapi_last_status_at
+                    : null)
+                  ?? call.timestamp
+
+                return (
+                  <Card key={call.id} className="border-border/80 bg-card/70">
+                    <CardHeader className="gap-4">
+                      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-3">
+                            <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+                              <IconPhoneCall className="size-5" />
+                            </span>
+                            <div className="min-w-0">
+                              <CardTitle className="truncate text-lg">{call.agent_name || "Agent"}</CardTitle>
+                              <CardDescription className="truncate">{call.caller_phone}</CardDescription>
+                            </div>
                           </div>
                         </div>
-                        <p className="mt-3 line-clamp-2 text-sm text-muted-foreground">
-                          {call.summary}
-                        </p>
-                      </div>
-                      <div className="flex flex-wrap gap-2 sm:justify-end">
-                        <Badge variant={call.status === "active" ? "default" : "secondary"}>
-                          {call.status === "active" ? "Live" : "Open"}
-                        </Badge>
-                        <Badge variant="outline">{getChannelLabel(call)}</Badge>
-                      </div>
-                    </div>
-                    <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
-                      <span>Started {formatRelativeDate(call.timestamp)}</span>
-                      <span>Last activity {formatRelativeDate(call.last_message_at || call.timestamp)}</span>
-                      <span>{call.has_transcript ? "Transcript ready" : "Transcript pending"}</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
 
-        <CallHistoryTable
-          calls={historyCalls}
-          title="History"
-          description="Completed and archived conversations across all agents."
-          emptyStateText="No completed calls or chats yet."
-          defaultDatePreset="last7"
-          showAgent
-        />
-      </div>
+                        <div className="flex flex-wrap gap-2 lg:justify-end">
+                          <Badge>Live</Badge>
+                          <Badge variant="outline">{getChannelLabel(call)}</Badge>
+                          {liveStatusLabel ? <Badge variant="secondary">{liveStatusLabel}</Badge> : null}
+                        </div>
+                      </div>
+
+                      <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
+                        <span>Started {formatRelativeDate(call.timestamp)}</span>
+                        <span>Last activity {formatRelativeDate(lastActivity)}</span>
+                        <span>{messages.length > 0 ? "Transcript live" : "Waiting for transcript"}</span>
+                      </div>
+                    </CardHeader>
+
+                    <CardContent className="space-y-4">
+                      <div className="rounded-xl border bg-background/70 p-4">
+                        <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                          <div>
+                            <p className="text-sm font-medium">Live transcript</p>
+                            <p className="text-xs text-muted-foreground">
+                              Updates automatically while the call is still active.
+                            </p>
+                          </div>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              window.location.href = `/assistant?ref=${call.id}`
+                            }}
+                          >
+                            Inspect call
+                          </Button>
+                        </div>
+
+                        <CallTranscript
+                          messages={messages}
+                          loading={Boolean(liveMessagesLoading[call.id])}
+                          emptyText="Waiting for live transcript..."
+                          className="max-h-[360px]"
+                        />
+                      </div>
+                    </CardContent>
+                  </Card>
+                )
+              })}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <CallHistoryTable
+        calls={historyCalls}
+        title="History"
+        description="Completed and older conversations across all agents."
+        emptyStateText="No older calls or chats yet."
+        defaultDatePreset="last30"
+        showAgent
+      />
     </div>
   )
 }

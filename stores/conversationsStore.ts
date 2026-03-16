@@ -15,6 +15,7 @@ interface ConversationsState {
   fetchMessages: (conversationId: string) => Promise<void>
   addMessage: (conversationId: string, message: Message) => void
   clearMessages: (conversationId: string) => void
+  removeConversation: (conversationId: string) => void
 }
 
 const CACHE_TTL = 2 * 60 * 1000
@@ -82,6 +83,18 @@ export const useConversationsStore = create<ConversationsState>()(
         set((state) => {
           const { [conversationId]: _, ...rest } = state.messages
           return { messages: rest }
+        })
+      },
+
+      removeConversation: (conversationId: string) => {
+        set((state) => {
+          const { [conversationId]: _, ...remainingMessages } = state.messages
+          const { [conversationId]: __, ...remainingMessagesLoading } = state.messagesLoading
+          return {
+            evaConversations: state.evaConversations.filter((conversation) => conversation.id !== conversationId),
+            messages: remainingMessages,
+            messagesLoading: remainingMessagesLoading,
+          }
         })
       },
     }),

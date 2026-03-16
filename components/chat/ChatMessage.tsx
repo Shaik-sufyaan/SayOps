@@ -3,7 +3,6 @@
 import * as React from "react"
 import ReactMarkdown from "react-markdown"
 import remarkGfm from "remark-gfm"
-import { IconMessageChatbot, IconUser } from "@tabler/icons-react"
 import { cn } from "@/lib/utils"
 import { ToolCallList, type ToolCall } from "./ToolCallIndicator"
 import type { MessagePart } from "@/lib/types"
@@ -42,25 +41,10 @@ export function ChatMessage({
   return (
     <div
       className={cn(
-        "flex gap-3",
+        "flex",
         isUser ? "flex-row-reverse" : "flex-row"
       )}
     >
-      <div
-        className={cn(
-          "size-8 rounded-lg flex items-center justify-center shrink-0 border shadow-sm",
-          isUser
-            ? "bg-muted border-muted-foreground/10"
-            : "bg-primary text-primary-foreground border-primary"
-        )}
-      >
-        {isUser ? (
-          <IconUser className="size-4" />
-        ) : (
-          <IconMessageChatbot className="size-4" />
-        )}
-      </div>
-
       <div
         className={cn(
           "flex flex-col gap-1.5 max-w-[85%] min-w-0 overflow-hidden",
@@ -102,7 +86,7 @@ export function ChatMessage({
         {(text || isStreaming) && (
           <div
             className={cn(
-              "px-3 py-2 rounded-2xl text-sm leading-relaxed",
+              "px-3 py-2 rounded-2xl text-sm leading-relaxed break-words [overflow-wrap:anywhere]",
               isUser
                 ? "bg-primary text-primary-foreground rounded-tr-none"
                 : "bg-muted rounded-tl-none"
@@ -111,10 +95,20 @@ export function ChatMessage({
             {isUser ? (
               <div className="whitespace-pre-wrap break-words">{text}</div>
             ) : (
-              <div className="prose prose-sm dark:prose-invert max-w-none prose-p:my-1 prose-ul:my-1 prose-ol:my-1 prose-li:my-0.5 prose-headings:my-1 prose-pre:my-1 prose-code:before:content-none prose-code:after:content-none">
+              <div className="prose prose-sm dark:prose-invert max-w-none break-words [overflow-wrap:anywhere] prose-p:my-1 prose-ul:my-1 prose-ol:my-1 prose-li:my-0.5 prose-headings:my-1 prose-pre:my-1 prose-code:before:content-none prose-code:after:content-none">
                 <ReactMarkdown
                   remarkPlugins={[remarkGfm]}
                   components={{
+                    a: ({ children, href }) => (
+                      <a
+                        href={href}
+                        className="break-all text-primary underline underline-offset-2"
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        {children}
+                      </a>
+                    ),
                     pre: ({ children }) => (
                       <pre className="overflow-x-auto max-w-full">{children}</pre>
                     ),

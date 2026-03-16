@@ -597,6 +597,14 @@ export function mapConversationToCallRecord(conversation: Conversation, agentNam
         ? (conversation.metadata.summary as any).summary
         : "Conversation"
 
+  const recordingUrl =
+    (typeof conversation.metadata?.vapi_recording_url === 'string' && conversation.metadata.vapi_recording_url.trim().length > 0
+      ? conversation.metadata.vapi_recording_url.trim()
+      : null)
+    || (typeof conversation.metadata?.recordingUrl === 'string' && conversation.metadata.recordingUrl.trim().length > 0
+      ? conversation.metadata.recordingUrl.trim()
+      : null)
+
   return {
     id: conversation.id,
     agent_id: conversation.agent_id,
@@ -606,10 +614,8 @@ export function mapConversationToCallRecord(conversation: Conversation, agentNam
     timestamp: conversation.started_at,
     last_message_at: conversation.last_message_at,
     duration_seconds: conversation.channel === 'voice' ? (Number(conversation.metadata?.vapi_duration_seconds ?? 0) || 0) : 0,
-    has_recording: Boolean(
-      (typeof conversation.metadata?.vapi_recording_url === 'string' && conversation.metadata.vapi_recording_url.trim().length > 0) ||
-      (typeof conversation.metadata?.recordingUrl === 'string' && conversation.metadata.recordingUrl.trim().length > 0)
-    ),
+    has_recording: Boolean(recordingUrl),
+    recording_url: recordingUrl,
     has_transcript: Boolean(
       (Array.isArray(conversation.metadata?.vapi_transcript) && conversation.metadata.vapi_transcript.length > 0) ||
       (typeof conversation.metadata?.vapi_transcript === 'string' && conversation.metadata.vapi_transcript.trim().length > 0)

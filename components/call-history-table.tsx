@@ -6,8 +6,6 @@ import {
   IconChevronRight,
   IconMessage,
   IconPhone,
-  IconRobot,
-  IconUser,
 } from "@tabler/icons-react"
 import { format } from "date-fns"
 
@@ -31,17 +29,9 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
+import { CallTranscript } from "@/components/call-transcript"
 
 type DatePreset = "today" | "yesterday" | "last7" | "last30"
-
-function messageToText(content: Message["content"]): string {
-  if (typeof content === "string") return content
-  if (!content || !Array.isArray(content)) return ""
-  return content
-    .filter((part) => part.type === "text")
-    .map((part) => part.text ?? "")
-    .join("\n")
-}
 
 function formatDuration(seconds?: number): string {
   const total = Number(seconds ?? 0)
@@ -68,20 +58,31 @@ function CallRow({
 }) {
   const [isOpen, setIsOpen] = React.useState(false)
   const [messages, setMessages] = React.useState<Message[]>([])
-  const [recordingUrl, setRecordingUrl] = React.useState<string | null>(null)
+  const [recordingUrl, setRecordingUrl] = React.useState<string | null>(call.recording_url ?? null)
   const [loading, setLoading] = React.useState(false)
+  const [recordingUnavailable, setRecordingUnavailable] = React.useState(false)
   const timestamp = new Date(call.timestamp)
 
+  React.useEffect(() => {
+    setRecordingUrl(call.recording_url ?? null)
+    setRecordingUnavailable(false)
+  }, [call.id, call.recording_url])
+
   const toggleOpen = async () => {
-    if (!isOpen && messages.length === 0) {
+    if (!isOpen && (messages.length === 0 || (call.channel === "voice" && !recordingUrl))) {
       setLoading(true)
       try {
         const [nextMessages, nextRecordingUrl] = await Promise.all([
-          fetchMessages(call.id),
-          call.channel === "voice" ? fetchRecordingUrl(call.id).catch(() => null) : Promise.resolve(null),
+          messages.length === 0 ? fetchMessages(call.id) : Promise.resolve(messages),
+          call.channel === "voice" && !recordingUrl
+            ? fetchRecordingUrl(call.id).catch(() => null)
+            : Promise.resolve(recordingUrl),
         ])
         setMessages(nextMessages)
-        setRecordingUrl(nextRecordingUrl)
+        if (call.channel === "voice") {
+          setRecordingUrl(nextRecordingUrl)
+          setRecordingUnavailable(!nextRecordingUrl)
+        }
       } catch (err) {
         console.error("Failed to fetch call details:", err)
       } finally {
@@ -139,40 +140,17 @@ function CallRow({
                       <audio controls src={recordingUrl} className="h-8 w-full max-w-md" />
                     </div>
                   )}
+                  {call.channel === "voice" && !recordingUrl && recordingUnavailable && (
+                    <div className="mt-4 border-t pt-4 text-xs text-muted-foreground">
+                      Recording unavailable for this call.
+                    </div>
+                  )}
                 </div>
               </div>
 
               <div className="flex flex-col gap-4">
                 <h4 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Transcript</h4>
-                <div className="flex max-h-[400px] flex-col gap-3 overflow-y-auto pr-2">
-                  {loading ? (
-                    <p className="animate-pulse text-sm text-muted-foreground">Loading transcript...</p>
-                  ) : messages.length === 0 ? (
-                    <p className="text-sm text-muted-foreground">No transcript available.</p>
-                  ) : (
-                    messages.map((turn, index) => (
-                      <div
-                        key={index}
-                        className={`flex gap-3 ${turn.role === "assistant" ? "flex-row" : "flex-row-reverse"}`}
-                      >
-                        <div
-                          className={`flex size-8 shrink-0 items-center justify-center rounded-full ${
-                            turn.role === "user" ? "bg-muted" : "bg-primary text-primary-foreground"
-                          }`}
-                        >
-                          {turn.role === "user" ? <IconUser className="size-4" /> : <IconRobot className="size-4" />}
-                        </div>
-                        <div
-                          className={`max-w-[80%] rounded-2xl px-4 py-2.5 text-sm ${
-                            turn.role === "user" ? "bg-muted" : "bg-primary/10"
-                          }`}
-                        >
-                          {messageToText(turn.content)}
-                        </div>
-                      </div>
-                    ))
-                  )}
-                </div>
+                <CallTranscript messages={messages} loading={loading} />
               </div>
 
               <div className="flex justify-end">

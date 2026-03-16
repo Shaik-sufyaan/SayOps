@@ -7,12 +7,6 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar"
-import {
-  ContextMenu,
-  ContextMenuContent,
-  ContextMenuItem,
-  ContextMenuTrigger,
-} from "@/components/ui/context-menu"
 import { NavSection } from "./NavSection"
 import { useSidebarStore, useAgentsStore } from "@/stores"
 import { useSidebarPaginatedData } from "@/hooks/useSidebarPaginatedData"
@@ -25,6 +19,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
+import { SidebarDeleteAction } from "./SidebarDeleteAction"
 
 interface Agent {
   id: string
@@ -75,18 +70,22 @@ export function NavAgents() {
     fetchPage,
   })
 
-  const handleDeleteAgent = async (agentId: string, agentName: string) => {
-    const confirmed = window.confirm(`Delete "${agentName}"? This action cannot be undone.`)
-    if (!confirmed) return
+  const handleDeleteAgent = async (targetAgentId: string, agentName: string) => {
+    await deleteAgent(targetAgentId)
 
-    try {
-      await deleteAgent(agentId)
-      removeAgent(agentId)
-      setItems((current) => current.filter((agent) => agent.id !== agentId))
-      toast.success("Agent deleted")
-    } catch (err) {
-      toast.error((err as Error).message || "Failed to delete agent")
+    const remainingAgents = allAgents.filter((agent) => agent.id !== targetAgentId)
+    removeAgent(targetAgentId)
+    setItems((current) => current.filter((agent) => agent.id !== targetAgentId))
+
+    if (view === "agent" && agentId === targetAgentId) {
+      if (remainingAgents.length > 0) {
+        setView("agent", { agentId: remainingAgents[0].id })
+      } else {
+        setView("create-agent")
+      }
     }
+
+    toast.success(`Deleted ${agentName}`)
   }
 
   const handleAgentsTitleClick = () => {
@@ -130,49 +129,51 @@ export function NavAgents() {
           </SidebarMenuItem>
         ) : agents.map((agent) => (
           <SidebarMenuItem key={agent.id}>
-            <ContextMenu>
-              <ContextMenuTrigger asChild>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <SidebarMenuButton
-                      isActive={view === "agent" && agentId === agent.id}
-                      onClick={() => setView("agent", { agentId: agent.id })}
-                    >
-                      <IconRobot className="size-4" />
-                      <span className="truncate">{agent.name}</span>
-                    </SidebarMenuButton>
-                  </TooltipTrigger>
-                  {(agent.phone_number || agent.enabled_connectors?.length) ? (
-                    <TooltipContent side="right" className="flex flex-col gap-1 text-xs">
-                      {agent.phone_number && (
-                        <span className="font-mono">
-                          {agent.phone_number.startsWith("+1")
-                            ? "+1 " + agent.phone_number.slice(2)
-                            : agent.phone_number}
-                        </span>
-                      )}
-                      {agent.enabled_connectors?.length ? (
-                        <div className="flex flex-col gap-0.5">
-                          {agent.enabled_connectors.map((c) => (
-                            <span key={c} className="text-emerald-400 capitalize">
-                              {c.replace(/_/g, " ")}
-                            </span>
-                          ))}
-                        </div>
-                      ) : null}
-                    </TooltipContent>
-                  ) : null}
-                </Tooltip>
-              </ContextMenuTrigger>
-              <ContextMenuContent>
-                <ContextMenuItem
-                  className="text-destructive focus:text-destructive"
-                  onClick={() => handleDeleteAgent(agent.id, agent.name)}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <SidebarMenuButton
+                  isActive={view === "agent" && agentId === agent.id}
+                  onClick={() => setView("agent", { agentId: agent.id })}
                 >
-                  Delete
-                </ContextMenuItem>
-              </ContextMenuContent>
-            </ContextMenu>
+                  <IconRobot className="size-4" />
+                  <span className="truncate">{agent.name}</span>
+                </SidebarMenuButton>
+              </TooltipTrigger>
+              {(agent.phone_number || agent.enabled_connectors?.length) ? (
+                <TooltipContent side="right" className="flex flex-col gap-1 text-xs">
+                  {agent.phone_number && (
+                    <span className="font-mono">
+                      {agent.phone_number.startsWith("+1")
+                        ? "+1 " + agent.phone_number.slice(2)
+                        : agent.phone_number}
+                    </span>
+                  )}
+                  {agent.enabled_connectors?.length ? (
+                    <div className="flex flex-col gap-0.5">
+                      {agent.enabled_connectors.map((c) => (
+                        <span key={c} className="text-emerald-400 capitalize">
+                          {c.replace(/_/g, " ")}
+                        </span>
+                      ))}
+                    </div>
+                  ) : null}
+                </TooltipContent>
+              ) : null}
+            </Tooltip>
+            <SidebarDeleteAction
+              itemLabel={agent.name}
+              title={`Delete ${agent.name}?`}
+              description="This will remove the agent from the sidebar and release any phone routing tied to it. This action cannot be undone."
+              confirmLabel="Delete Agent"
+              onConfirm={async () => {
+                try {
+                  await handleDeleteAgent(agent.id, agent.name)
+                } catch (err) {
+                  toast.error((err as Error).message || "Failed to delete agent")
+                  throw err
+                }
+              }}
+            />
           </SidebarMenuItem>
         ))}
         {!loading && agents.length === 0 && (

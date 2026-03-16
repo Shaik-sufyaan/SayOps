@@ -1,7 +1,7 @@
 "use client"
 
 import { useSearchParams, useRouter, usePathname } from "next/navigation"
-import { useCallback } from "react"
+import { useCallback, useEffect } from "react"
 
 export type ViewId =
   | "dashboard"
@@ -27,15 +27,35 @@ export function useViewParams() {
   const pathname = usePathname()
 
   const rawView = searchParams.get("view") as ViewId | null
-  const view = (rawView === "history" ? "calls" : rawView) || "dashboard"
+  const normalizeView = (candidate: ViewId | null): Exclude<ViewId, "dashboard" | "history"> | "calls" => {
+    if (candidate === "dashboard" || candidate === "history" || candidate === null) {
+      return "calls"
+    }
+    return candidate
+  }
+
+  const view = normalizeView(rawView)
   const agentId = searchParams.get("agentId")
   const orgId = searchParams.get("orgId")
 
+  useEffect(() => {
+    if (rawView !== "dashboard" && rawView !== "history") return
+
+    const p = new URLSearchParams(searchParams.toString())
+    p.delete("view")
+    const next = p.toString()
+    router.replace(next ? `${pathname}?${next}` : pathname, { scroll: false })
+  }, [pathname, rawView, router, searchParams])
+
   const setView = useCallback(
     (newView: ViewId, params?: Record<string, string>) => {
-      const normalizedView = newView === "history" ? "calls" : newView
+      const normalizedView = normalizeView(newView)
       const p = new URLSearchParams(searchParams.toString())
-      p.set("view", normalizedView)
+      if (normalizedView === "calls") {
+        p.delete("view")
+      } else {
+        p.set("view", normalizedView)
+      }
       // Clear agent-specific params when switching away from agent view
       if (normalizedView !== "agent") p.delete("agentId")
       // Clear org-specific params when switching away from admin-org-detail
@@ -44,7 +64,8 @@ export function useViewParams() {
       if (params) {
         Object.entries(params).forEach(([k, v]) => p.set(k, v))
       }
-      router.replace(`${pathname}?${p.toString()}`, { scroll: false })
+      const next = p.toString()
+      router.replace(next ? `${pathname}?${next}` : pathname, { scroll: false })
     },
     [searchParams, router, pathname]
   )

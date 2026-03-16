@@ -6,7 +6,6 @@ import { useAuth } from "@/lib/auth-context"
 import { useViewParams } from "@/hooks/useViewParams"
 import { useAgentsStore } from "@/stores"
 import { Spinner } from "@/components/ui/spinner"
-import { DashboardPanel } from "./DashboardPanel"
 import { DocumentsPanel } from "./DocumentsPanel"
 import { HistoryPanel } from "./HistoryPanel"
 import { IntegrationsPanel } from "./IntegrationsPanel"
@@ -26,7 +25,7 @@ function PanelContainerInner() {
   const { user, loading: authLoading } = useAuth()
   const { agents, fetchAgents } = useAgentsStore()
   const router = useRouter()
-  const [visited, setVisited] = useState<Set<string>>(new Set(["dashboard"]))
+  const [visited, setVisited] = useState<Set<string>>(new Set(["calls"]))
   const [agentsChecked, setAgentsChecked] = useState(false)
 
   // Centralized auth gate
@@ -47,7 +46,7 @@ function PanelContainerInner() {
 
   useEffect(() => {
     if (!user || !agentsChecked) return
-    if (view === "dashboard" && agents.length === 0) {
+    if (view === "calls" && agents.length === 0) {
       setView("create-agent")
     }
   }, [user, agentsChecked, view, agents.length, setView])
@@ -69,9 +68,6 @@ function PanelContainerInner() {
 
   return (
     <>
-      <Panel active={view === "dashboard"} visited={visited.has("dashboard")}>
-        <DashboardPanel />
-      </Panel>
       <Panel active={view === "documents"} visited={visited.has("documents")}>
         <DocumentsPanel />
       </Panel>

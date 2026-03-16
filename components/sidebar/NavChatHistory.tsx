@@ -7,12 +7,6 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar"
-import {
-  ContextMenu,
-  ContextMenuContent,
-  ContextMenuItem,
-  ContextMenuTrigger,
-} from "@/components/ui/context-menu"
 import { NavSection } from "./NavSection"
 import { useSidebarStore, useConversationsStore } from "@/stores"
 import { useSidebarPaginatedData } from "@/hooks/useSidebarPaginatedData"
@@ -22,6 +16,7 @@ import { getChatSummary } from "@/lib/utils"
 import { useEvaChatStore } from "@/stores/evaChatStore"
 import { deleteConversation, fetchEvaConversationsPage } from "@/lib/api-client"
 import { toast } from "sonner"
+import { SidebarDeleteAction } from "./SidebarDeleteAction"
 
 function formatRelativeDate(dateStr: string): string {
   const date = new Date(dateStr)
@@ -38,7 +33,7 @@ function formatRelativeDate(dateStr: string): string {
 export function NavChatHistory() {
   const { user } = useAuth()
   const { sections } = useSidebarStore()
-  const { invalidateAndRefetch } = useConversationsStore()
+  const { invalidateAndRefetch, removeConversation } = useConversationsStore()
   const { conversationId, isOpen: isChatOpen } = useEvaChatStore()
   const searchQuery = sections.evaChat?.searchQuery || ""
   const isSectionOpen = sections.evaChat?.isOpen ?? true
@@ -95,23 +90,17 @@ export function NavChatHistory() {
   }
 
   const handleDeleteChat = async (chatId: string) => {
-    const confirmed = window.confirm("Delete this Eva chat? This action cannot be undone.")
-    if (!confirmed) return
+    await deleteConversation(chatId)
 
-    try {
-      await deleteConversation(chatId)
-
-      const store = useEvaChatStore.getState()
-      if (store.conversationId === chatId) {
-        store.startNewChat()
-      }
-
-      await invalidateAndRefetch()
-      setItems((current) => current.filter((conversation) => conversation.id !== chatId))
-      toast.success("Chat deleted")
-    } catch (err) {
-      toast.error((err as Error).message || "Failed to delete chat")
+    const store = useEvaChatStore.getState()
+    if (store.conversationId === chatId) {
+      store.startNewChat()
     }
+
+    removeConversation(chatId)
+    setItems((current) => current.filter((conversation) => conversation.id !== chatId))
+    void invalidateAndRefetch().catch(() => {})
+    toast.success("Chat deleted")
   }
 
   return (
@@ -146,30 +135,33 @@ export function NavChatHistory() {
         ) : conversations.length > 0 ? (
           conversations.map((chat) => (
             <SidebarMenuItem key={chat.id}>
-              <ContextMenu>
-                <ContextMenuTrigger asChild>
-                  <SidebarMenuButton
-                    isActive={isChatOpen && conversationId === chat.id}
-                    onClick={() => handleOpenChat(chat.id)}
-                  >
-                    <IconMessage className="size-4 text-muted-foreground" />
-                    <span className="truncate flex-1">
-                      {getChatSummary(chat.metadata, "Eva Chat")}
-                    </span>
-                    <span className="text-[10px] text-muted-foreground ml-auto">
-                      {formatRelativeDate(chat.started_at)}
-                    </span>
-                  </SidebarMenuButton>
-                </ContextMenuTrigger>
-                <ContextMenuContent>
-                  <ContextMenuItem
-                    className="text-destructive focus:text-destructive"
-                    onClick={() => handleDeleteChat(chat.id)}
-                  >
-                    Delete
-                  </ContextMenuItem>
-                </ContextMenuContent>
-              </ContextMenu>
+              <SidebarMenuButton
+                isActive={isChatOpen && conversationId === chat.id}
+                onClick={() => handleOpenChat(chat.id)}
+                className="pr-12"
+              >
+                <IconMessage className="size-4 text-muted-foreground" />
+                <span className="truncate flex-1">
+                  {getChatSummary(chat.metadata, "Eva Chat")}
+                </span>
+                <span className="text-[10px] text-muted-foreground ml-auto">
+                  {formatRelativeDate(chat.started_at)}
+                </span>
+              </SidebarMenuButton>
+              <SidebarDeleteAction
+                itemLabel={getChatSummary(chat.metadata, "Eva Chat")}
+                title="Delete this Eva chat?"
+                description="This permanently deletes the conversation and its stored messages from Evently. This action cannot be undone."
+                confirmLabel="Delete Chat"
+                onConfirm={async () => {
+                  try {
+                    await handleDeleteChat(chat.id)
+                  } catch (err) {
+                    toast.error((err as Error).message || "Failed to delete chat")
+                    throw err
+                  }
+                }}
+              />
             </SidebarMenuItem>
           ))
         ) : (

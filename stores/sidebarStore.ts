@@ -12,6 +12,7 @@ interface SidebarState {
   mobileOpen: boolean
   sections: Record<string, SidebarSectionState>
   setWidth: (width: number) => void
+  setCollapsed: (isCollapsed: boolean) => void
   toggleCollapsed: () => void
   setMobileOpen: (val: boolean) => void
   setSectionOpen: (section: string, isOpen: boolean) => void
@@ -31,7 +32,6 @@ export const useSidebarStore = create<SidebarState>()(
       mobileOpen: false,
       sections: {
         agents: { isOpen: true, searchQuery: '' },
-        evaChat: { isOpen: true, searchQuery: '' },
         callHistory: { isOpen: false, searchQuery: '' },
         documents: { isOpen: true, searchQuery: '' },
         integrations: { isOpen: false, searchQuery: '' },
@@ -40,6 +40,10 @@ export const useSidebarStore = create<SidebarState>()(
       setWidth: (width: number) => {
         const clampedWidth = Math.max(MIN_WIDTH, Math.min(MAX_WIDTH, width))
         set({ width: clampedWidth })
+      },
+
+      setCollapsed: (isCollapsed: boolean) => {
+        set({ isCollapsed })
       },
 
       toggleCollapsed: () => {
@@ -82,6 +86,7 @@ export const useSidebarStore = create<SidebarState>()(
     }),
     {
       name: 'speakops-sidebar',
+      skipHydration: true,
       partialize: (state) => ({
         width: state.width,
         isCollapsed: state.isCollapsed,

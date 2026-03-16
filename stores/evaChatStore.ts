@@ -22,6 +22,7 @@ interface EvaChatState {
   isLoading: boolean
   error: string | null
   pendingNavigation: { view: string; agentId?: string } | null
+  pendingInputSeed: string
   size: { width: number; height: number }
 
   toggleOpen: () => void
@@ -29,6 +30,8 @@ interface EvaChatState {
   setFullscreen: (fullscreen: boolean) => void
   toggleFullscreen: () => void
   setSize: (size: { width: number; height: number }) => void
+  appendInputSeed: (text: string) => void
+  clearPendingInputSeed: () => void
   sendMessage: (content: string, files: File[]) => Promise<void>
   startNewChat: () => void
   loadConversation: (conversationId: string, messages: EvaMessage[]) => void
@@ -171,6 +174,7 @@ const useEvaChatStore = create<EvaChatState>()(
       isLoading: false,
       error: null,
       pendingNavigation: null,
+      pendingInputSeed: '',
       size: { width: 380, height: 520 },
 
       toggleOpen: () => {
@@ -191,6 +195,14 @@ const useEvaChatStore = create<EvaChatState>()(
 
       setSize: (size: { width: number; height: number }) => {
         set({ size })
+      },
+
+      appendInputSeed: (text: string) => {
+        set((state) => ({ pendingInputSeed: state.pendingInputSeed + text }))
+      },
+
+      clearPendingInputSeed: () => {
+        set({ pendingInputSeed: '' })
       },
 
       sendMessage: async (content: string, files: File[]) => {

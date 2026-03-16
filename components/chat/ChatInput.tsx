@@ -30,6 +30,10 @@ export interface ChatInputProps {
   acceptFileTypes?: string
   /** Whether to show the attachment button. Default: true */
   showAttachments?: boolean
+  /** Pending globally-captured typing that should be inserted into the input */
+  pendingInputSeed?: string
+  /** Called after pendingInputSeed has been consumed */
+  onPendingInputSeedConsumed?: () => void
 }
 
 const generateId = () => `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
@@ -42,6 +46,8 @@ export function ChatInput({
   disabled = false,
   acceptFileTypes = "image/*",
   showAttachments = true,
+  pendingInputSeed = "",
+  onPendingInputSeedConsumed,
 }: ChatInputProps) {
   const [input, setInput] = React.useState("")
   const [attachments, setAttachments] = React.useState<ChatAttachment[]>([])
@@ -60,6 +66,21 @@ export function ChatInput({
   React.useEffect(() => {
     autoResize()
   }, [input, autoResize])
+
+  React.useEffect(() => {
+    if (!pendingInputSeed) return
+
+    setInput((current) => current + pendingInputSeed)
+    onPendingInputSeedConsumed?.()
+
+    requestAnimationFrame(() => {
+      const el = textareaRef.current
+      if (!el) return
+      el.focus()
+      const length = el.value.length
+      el.setSelectionRange(length, length)
+    })
+  }, [onPendingInputSeedConsumed, pendingInputSeed])
 
   // Drain queue when isLoading transitions from true -> false
   React.useEffect(() => {
@@ -156,7 +177,7 @@ export function ChatInput({
   )
 
   return (
-    <div className="p-3 border-t bg-muted/30 shrink-0">
+    <div className="shrink-0 border-t border-border/60 bg-background/30 p-3 backdrop-blur-md">
       {/* Queued messages — same UI as Eva's */}
       {queuedMessages.length > 0 && (
         <div className="flex flex-wrap gap-1.5 mb-2">
@@ -198,7 +219,7 @@ export function ChatInput({
       )}
 
       {/* Input row — same structure as Eva's */}
-      <div className="flex items-end gap-2 bg-background border rounded-xl p-1.5 focus-within:ring-1 focus-within:ring-primary">
+      <div className="flex items-end gap-2 rounded-xl border border-white/40 bg-background/60 p-1.5 backdrop-blur-xl focus-within:ring-1 focus-within:ring-primary dark:border-white/8 dark:bg-zinc-950/34">
         {showAttachments && (
           <label className="cursor-pointer p-1.5 hover:bg-muted rounded-md transition-colors" title="Attach file">
             <IconPaperclip className="size-4 text-muted-foreground" />

@@ -15,7 +15,6 @@ import {
 import { useAuth } from "@/lib/auth-context"
 import { fetchUsageSummary } from "@/lib/api-client"
 import { NavAgents } from "@/components/sidebar/NavAgents"
-import { NavChatHistory } from "@/components/sidebar/NavChatHistory"
 import { NavIntegrations } from "@/components/sidebar/NavIntegrations"
 import { NavDocuments } from "@/components/sidebar/NavDocuments"
 import { NavCallHistory } from "@/components/sidebar/NavCallHistory"
@@ -27,19 +26,19 @@ function SpeakOpsWaveMark() {
   return (
     <svg
       aria-hidden="true"
-      viewBox="0 0 44 12"
-      className="mt-1 h-3 w-11 text-current opacity-50"
+      viewBox="0 0 56 18"
+      className="h-4 w-14 text-current opacity-60"
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
     >
-      <g stroke="currentColor" strokeWidth="1.6" strokeLinecap="round">
-        <line x1="3" y1="6" x2="3" y2="6" />
-        <line x1="9" y1="3.5" x2="9" y2="8.5" />
-        <line x1="15" y1="1.5" x2="15" y2="10.5" />
-        <line x1="21" y1="4" x2="21" y2="8" />
-        <line x1="27" y1="2.5" x2="27" y2="9.5" />
-        <line x1="33" y1="1" x2="33" y2="11" />
-        <line x1="39" y1="4.5" x2="39" y2="7.5" />
+      <g stroke="currentColor" strokeWidth="2.1" strokeLinecap="round">
+        <line x1="4" y1="10" x2="4" y2="10" />
+        <line x1="12" y1="8" x2="12" y2="12" />
+        <line x1="20" y1="5.5" x2="20" y2="14.5" />
+        <line x1="28" y1="3.5" x2="28" y2="16.5" />
+        <line x1="36" y1="6.5" x2="36" y2="13.5" />
+        <line x1="44" y1="4.5" x2="44" y2="15.5" />
+        <line x1="52" y1="8.5" x2="52" y2="11.5" />
       </g>
     </svg>
   )
@@ -52,6 +51,13 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
   const { width, setWidth, isCollapsed, toggleCollapsed, mobileOpen, setMobileOpen } = useSidebarStore()
   const resizeRef = React.useRef<{ startX: number; startWidth: number } | null>(null)
   const [usageStats, setUsageStats] = React.useState<{ totalCost: number; totalTokens: number } | null>(null)
+  const [isSidebarReady, setIsSidebarReady] = React.useState(false)
+
+  React.useEffect(() => {
+    Promise.resolve(useSidebarStore.persist.rehydrate()).finally(() => {
+      setIsSidebarReady(true)
+    })
+  }, [])
 
   React.useEffect(() => {
     if (!user) return
@@ -159,24 +165,24 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
           style={{ width: mobileOpen ? DEFAULT_WIDTH : width }}
         >
           <Sidebar collapsible="none" className="h-full !w-full !bg-white/25 dark:!bg-black/30 backdrop-blur-2xl border-r border-white/40 dark:border-white/10 shadow-[inset_-1px_0_0_rgba(255,255,255,0.5)] dark:shadow-[inset_-1px_0_0_rgba(255,255,255,0.08)]" {...props}>
-            <SidebarHeader>
+            <SidebarHeader className="px-3 py-3">
               <SidebarMenu>
                 <SidebarMenuItem>
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
                     <SidebarMenuButton
-                      isActive={view === "dashboard"}
-                      onClick={() => setView("dashboard")}
-                      className="data-[slot=sidebar-menu-button]:!p-1.5 flex-1"
+                      isActive={view === "calls"}
+                      onClick={() => setView("calls")}
+                      className="h-auto flex-1 !p-0 hover:bg-transparent active:bg-transparent data-[active=true]:bg-transparent"
                     >
-                      <span className="flex flex-col items-start leading-none text-foreground">
-                        <span className="text-base font-bold">SpeakOps</span>
+                      <div className="flex min-h-11 w-full items-center justify-between rounded-xl bg-white/18 px-3 py-2 text-foreground shadow-[inset_0_1px_0_rgba(255,255,255,0.16)] transition-colors hover:bg-white/24 dark:bg-white/5 dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.05)] dark:hover:bg-white/8">
+                        <span className="text-base font-bold leading-none">SpeakOps</span>
                         <SpeakOpsWaveMark />
-                      </span>
+                      </div>
                     </SidebarMenuButton>
                     {/* Collapse button: desktop only */}
                     <button
                       onClick={toggleCollapsed}
-                      className="text-muted-foreground hover:text-foreground p-1 mr-1 hidden lg:block"
+                      className="hidden shrink-0 rounded-md p-1 text-muted-foreground transition-colors hover:bg-white/12 hover:text-foreground lg:block"
                       title="Collapse sidebar"
                     >
                       <IconLayoutSidebarLeftCollapse className="size-4" />
@@ -184,7 +190,7 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
                     {/* Close button: mobile only */}
                     <button
                       onClick={() => setMobileOpen(false)}
-                      className="text-muted-foreground hover:text-foreground p-1 mr-1 lg:hidden"
+                      className="shrink-0 rounded-md p-1 text-muted-foreground transition-colors hover:bg-white/12 hover:text-foreground lg:hidden"
                       title="Close sidebar"
                     >
                       <IconX className="size-4" />
@@ -195,53 +201,73 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
             </SidebarHeader>
 
             <SidebarContent className="overflow-y-auto">
-              <NavAgents />
-              <NavChatHistory />
-              <NavCallHistory />
-              <NavDocuments />
-              <div className="mt-auto">
-                <SidebarMenu className="px-2 pb-1">
-                  <SidebarMenuItem>
-                    <SidebarMenuButton isActive={view === "token-usage"} onClick={() => setView("token-usage")} className="gap-2">
-                      <IconCoin className="size-4 text-amber-500" />
-                      <span>Token Usage</span>
-                      {usageStats && (
-                        <div className="ml-auto flex items-center gap-1.5 text-[10px] font-medium">
-                          <span className="text-emerald-500">+${usageStats.totalCost.toFixed(2)}</span>
-                          <span className="text-red-400">−{new Intl.NumberFormat().format(usageStats.totalTokens)} tok</span>
-                        </div>
+              {isSidebarReady ? (
+                <>
+                  <NavCallHistory />
+                  <NavAgents />
+                  <NavDocuments />
+                  <div className="mt-auto">
+                    <SidebarMenu className="px-2 pb-1">
+                      <SidebarMenuItem>
+                        <SidebarMenuButton isActive={view === "token-usage"} onClick={() => setView("token-usage")} className="gap-2">
+                          <IconCoin className="size-4 text-amber-500" />
+                          <span>Token Usage</span>
+                          {usageStats && (
+                            <div className="ml-auto flex items-center gap-1.5 text-[10px] font-medium">
+                              <span className="text-emerald-500">+${usageStats.totalCost.toFixed(2)}</span>
+                              <span className="text-red-400">−{new Intl.NumberFormat().format(usageStats.totalTokens)} tok</span>
+                            </div>
+                          )}
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                      <SidebarMenuItem>
+                        <SidebarMenuButton isActive={view === "payments"} onClick={() => setView("payments")} className="gap-2">
+                          <IconCreditCard className="size-4 text-violet-500" />
+                          <span>Payments</span>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                      {isPlatformAdmin && (
+                        <>
+                          <SidebarMenuItem>
+                            <SidebarMenuButton isActive={view === "admin-orgs" || view === "admin-org-detail"} onClick={() => setView("admin-orgs")} className="gap-2">
+                              <IconBuilding className="size-4 text-sky-500" />
+                              <span>Organizations</span>
+                            </SidebarMenuButton>
+                          </SidebarMenuItem>
+                          <SidebarMenuItem>
+                            <SidebarMenuButton isActive={view === "platform-health"} onClick={() => setView("platform-health")} className="gap-2">
+                              <IconHeartbeat className="size-4 text-emerald-500" />
+                              <span>Platform Health</span>
+                            </SidebarMenuButton>
+                          </SidebarMenuItem>
+                        </>
                       )}
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                  <SidebarMenuItem>
-                    <SidebarMenuButton isActive={view === "payments"} onClick={() => setView("payments")} className="gap-2">
-                      <IconCreditCard className="size-4 text-violet-500" />
-                      <span>Payments</span>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                  {isPlatformAdmin && (
-                    <>
-                      <SidebarMenuItem>
-                        <SidebarMenuButton isActive={view === "admin-orgs" || view === "admin-org-detail"} onClick={() => setView("admin-orgs")} className="gap-2">
-                          <IconBuilding className="size-4 text-sky-500" />
-                          <span>Organizations</span>
-                        </SidebarMenuButton>
-                      </SidebarMenuItem>
-                      <SidebarMenuItem>
-                        <SidebarMenuButton isActive={view === "platform-health"} onClick={() => setView("platform-health")} className="gap-2">
-                          <IconHeartbeat className="size-4 text-emerald-500" />
-                          <span>Platform Health</span>
-                        </SidebarMenuButton>
-                      </SidebarMenuItem>
-                    </>
-                  )}
-                </SidebarMenu>
-                <NavIntegrations />
-              </div>
+                    </SidebarMenu>
+                    <NavIntegrations />
+                  </div>
+                </>
+              ) : (
+                <div className="flex h-full flex-col gap-3 px-2 py-3">
+                  <div className="space-y-2">
+                    <div className="h-9 rounded-md bg-white/30 dark:bg-white/6" />
+                    <div className="h-9 rounded-md bg-white/22 dark:bg-white/5" />
+                    <div className="h-9 rounded-md bg-white/18 dark:bg-white/4" />
+                  </div>
+                  <div className="mt-auto space-y-2">
+                    <div className="h-9 rounded-md bg-white/22 dark:bg-white/5" />
+                    <div className="h-9 rounded-md bg-white/18 dark:bg-white/4" />
+                    <div className="h-9 rounded-md bg-white/14 dark:bg-white/3" />
+                  </div>
+                </div>
+              )}
             </SidebarContent>
 
             <SidebarFooter className="gap-2 p-4">
-              <NavUser user={userData} />
+              {isSidebarReady ? (
+                <NavUser user={userData} />
+              ) : (
+                <div className="h-12 rounded-md bg-white/26 dark:bg-white/6" />
+              )}
             </SidebarFooter>
           </Sidebar>
 

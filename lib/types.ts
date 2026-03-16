@@ -179,6 +179,7 @@ export interface CallRecord {
   last_message_at: string | null
   duration_seconds: number
   has_recording: boolean
+  recording_url?: string | null
   has_transcript: boolean
   summary: string
   caller_phone: string
