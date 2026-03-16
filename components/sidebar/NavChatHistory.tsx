@@ -31,7 +31,7 @@ function formatRelativeDate(dateStr: string): string {
 }
 
 export function NavChatHistory() {
-  const { user } = useAuth()
+  const { user, loading: authLoading } = useAuth()
   const { sections } = useSidebarStore()
   const { invalidateAndRefetch, removeConversation } = useConversationsStore()
   const { conversationId, isOpen: isChatOpen } = useEvaChatStore()
@@ -72,6 +72,7 @@ export function NavChatHistory() {
     reload,
     setItems,
   } = useSidebarPaginatedData<Conversation>({
+    enabled: !authLoading && Boolean(user),
     isOpen: isSectionOpen,
     searchQuery,
     fetchPage,

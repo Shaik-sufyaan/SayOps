@@ -24,7 +24,7 @@ import { deleteDocument, fetchDocumentsPage } from "@/lib/api-client"
 import { toast } from "sonner"
 
 export function NavDocuments() {
-  const { user } = useAuth()
+  const { user, loading: authLoading } = useAuth()
   const { sections } = useSidebarStore()
   const { view, setView } = useViewParams()
   const { removeDocument } = useDocumentsStore()
@@ -65,6 +65,7 @@ export function NavDocuments() {
     reload,
     setItems,
   } = useSidebarPaginatedData<UserDocument>({
+    enabled: !authLoading && Boolean(user),
     isOpen: isSectionOpen,
     searchQuery,
     fetchPage,

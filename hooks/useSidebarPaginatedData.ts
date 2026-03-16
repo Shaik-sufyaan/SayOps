@@ -14,11 +14,13 @@ interface SidebarPageResult<T> {
 }
 
 export function useSidebarPaginatedData<T>({
+  enabled = true,
   isOpen,
   searchQuery,
   pageSize = 3,
   fetchPage,
 }: {
+  enabled?: boolean
   isOpen: boolean
   searchQuery: string
   pageSize?: number
@@ -81,9 +83,9 @@ export function useSidebarPaginatedData<T>({
   }, [hasMore, loadPage, loading])
 
   React.useEffect(() => {
-    if (!isOpen) return
+    if (!enabled || !isOpen) return
     void loadPage(false)
-  }, [isOpen, loadPage])
+  }, [enabled, isOpen, loadPage])
 
   return {
     items,

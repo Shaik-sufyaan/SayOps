@@ -11,6 +11,7 @@ import { NavSection } from "./NavSection"
 import { useSidebarStore, useAgentsStore } from "@/stores"
 import { useSidebarPaginatedData } from "@/hooks/useSidebarPaginatedData"
 import { useViewParams } from "@/hooks/useViewParams"
+import { useAuth } from "@/lib/auth-context"
 import { deleteAgent, fetchAgentsPage } from "@/lib/api-client"
 import { toast } from "sonner"
 import {
@@ -30,6 +31,7 @@ interface Agent {
 }
 
 export function NavAgents() {
+  const { user, loading: authLoading } = useAuth()
   const { sections } = useSidebarStore()
   const { agents: allAgents, removeAgent } = useAgentsStore()
   const { view, agentId, setView } = useViewParams()
@@ -45,6 +47,10 @@ export function NavAgents() {
     offset: number
     searchQuery: string
   }) => {
+    if (!user) {
+      return { items: [], hasMore: false }
+    }
+
     const result = await fetchAgentsPage({
       limit,
       offset,
@@ -54,7 +60,7 @@ export function NavAgents() {
       items: result.agents as Agent[],
       hasMore: result.hasMore,
     }
-  }, [])
+  }, [user])
 
   const {
     items: agents,
@@ -65,6 +71,7 @@ export function NavAgents() {
     reload,
     setItems,
   } = useSidebarPaginatedData<Agent>({
+    enabled: !authLoading && Boolean(user),
     isOpen,
     searchQuery,
     fetchPage,

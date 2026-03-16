@@ -4,7 +4,6 @@ import React from "react"
 import {
   IconActivity,
   IconClock,
-  IconMessage,
   IconPhone,
   IconPhoneCall,
 } from "@tabler/icons-react"
@@ -29,7 +28,7 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 
-const LIVE_CALL_STALE_MS = 20 * 60 * 1000
+const LIVE_CALL_STALE_MS = 5 * 60 * 1000
 const TERMINAL_VAPI_STATUSES = new Set(["ended", "completed", "failed", "canceled"])
 
 function StatCard({
@@ -79,7 +78,6 @@ function getConversationActivityTimestamp(conversation: Conversation): number {
     getTimestamp(conversation.last_message_at),
     getTimestamp(conversation.metadata?.vapi_last_status_at),
     getTimestamp(conversation.started_at),
-    getTimestamp(conversation.updated_at),
   ].filter((value): value is number => value !== null)
 
   return candidates.length > 0 ? Math.max(...candidates) : 0
@@ -108,30 +106,6 @@ function isLiveVoiceConversation(conversation: Conversation, now = Date.now()): 
   return getConversationActivityTimestamp(conversation) >= now - LIVE_CALL_STALE_MS
 }
 
-function hasVoiceHistoryEvidence(conversation: Conversation): boolean {
-  if (conversation.channel !== "voice") return true
-  if (conversation.status === "completed" || conversation.status === "archived") return true
-  if (typeof conversation.metadata?.vapi_end_of_call_report_at === "string") return true
-
-  const vapiStatus = typeof conversation.metadata?.vapi_status === "string"
-    ? conversation.metadata.vapi_status.trim().toLowerCase()
-    : ""
-
-  if (vapiStatus && TERMINAL_VAPI_STATUSES.has(vapiStatus)) return true
-
-  const hasRecording =
-    (typeof conversation.metadata?.vapi_recording_url === "string" && conversation.metadata.vapi_recording_url.trim().length > 0) ||
-    (typeof conversation.metadata?.recordingUrl === "string" && conversation.metadata.recordingUrl.trim().length > 0)
-
-  if (hasRecording) return true
-
-  return (
-    Array.isArray(conversation.metadata?.vapi_transcript) && conversation.metadata.vapi_transcript.length > 0
-  ) || (
-    typeof conversation.metadata?.vapi_transcript === "string" && conversation.metadata.vapi_transcript.trim().length > 0
-  )
-}
-
 export function HistoryPanel() {
   const [conversations, setConversations] = React.useState<Conversation[]>([])
   const [agentNameById, setAgentNameById] = React.useState<Map<string, string>>(new Map())
@@ -147,9 +121,7 @@ export function HistoryPanel() {
       ])
 
       const nextAgentNameById = new Map(agents.map((agent) => [agent.id, agent.name]))
-      const visibleConversations = nextConversations.filter(
-        (conversation) => conversation.channel === "voice" || conversation.channel === "web"
-      )
+      const visibleConversations = nextConversations.filter((conversation) => conversation.channel === "voice")
 
       React.startTransition(() => {
         setAgentNameById(nextAgentNameById)
@@ -208,7 +180,7 @@ export function HistoryPanel() {
   const historyConversationIds = React.useMemo(
     () => new Set(
       sortedConversations
-        .filter((conversation) => !liveCallIds.has(conversation.id) && hasVoiceHistoryEvidence(conversation))
+        .filter((conversation) => !liveCallIds.has(conversation.id))
         .map((conversation) => conversation.id)
     ),
     [liveCallIds, sortedConversations]
@@ -299,8 +271,6 @@ export function HistoryPanel() {
   }, [calls])
 
   const voiceToday = todayCalls.filter((call) => call.channel === "voice").length
-  const webToday = todayCalls.filter((call) => call.channel === "web").length
-
   if (loading) {
     return (
       <div className="flex min-h-[400px] items-center justify-center">
@@ -315,7 +285,7 @@ export function HistoryPanel() {
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Calls</h1>
           <p className="mt-1 text-muted-foreground">
-            Live phone calls on top, older call and chat history underneath.
+            Live phone calls on top, past phone calls underneath.
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -335,7 +305,7 @@ export function HistoryPanel() {
           icon={<IconClock className="size-4" />}
           title="Today"
           value={String(todayCalls.length)}
-          description="Total calls and web chats started today."
+          description="Phone calls started today."
         />
         <StatCard
           icon={<IconPhone className="size-4" />}
@@ -344,10 +314,10 @@ export function HistoryPanel() {
           description="Voice conversations started today."
         />
         <StatCard
-          icon={<IconMessage className="size-4" />}
-          title="Web"
-          value={String(webToday)}
-          description="Web chats started today."
+          icon={<IconClock className="size-4" />}
+          title="Past"
+          value={String(historyCalls.length)}
+          description="Phone calls that are no longer live."
         />
       </div>
 
@@ -444,8 +414,8 @@ export function HistoryPanel() {
       <CallHistoryTable
         calls={historyCalls}
         title="History"
-        description="Completed and older conversations across all agents."
-        emptyStateText="No older calls or chats yet."
+        description="Past phone calls across all agents."
+        emptyStateText="No past calls yet."
         defaultDatePreset="last30"
         showAgent
       />
