@@ -222,6 +222,49 @@ describe('dashboard redirect logic', () => {
   })
 })
 
+// ── 7. SSE heartbeat compatibility ──
+
+describe('chat stream parser compatibility', () => {
+  function extractDataFrames(raw: string): string[] {
+    let buffer = raw.replace(/\r\n/g, '\n')
+    const frames: string[] = []
+
+    let boundaryIndex = buffer.indexOf('\n\n')
+    while (boundaryIndex !== -1) {
+      const rawEvent = buffer.slice(0, boundaryIndex)
+      buffer = buffer.slice(boundaryIndex + 2)
+
+      const data = rawEvent
+        .split('\n')
+        .filter((line) => line.startsWith('data:'))
+        .map((line) => line.slice(5).trimStart())
+        .join('\n')
+
+      if (data) frames.push(data)
+      boundaryIndex = buffer.indexOf('\n\n')
+    }
+
+    return frames
+  }
+
+  test('ignores SSE comment heartbeats and preserves data payloads', () => {
+    const frames = extractDataFrames(
+      ': connected\n\n' +
+      ': keep-alive\n\n' +
+      'data: {"text":"hello"}\n\n' +
+      ': keep-alive\n\n' +
+      'data: {"done":{"output":"hello"}}\n\n' +
+      'data: [DONE]\n\n'
+    )
+
+    expect(frames).toEqual([
+      '{"text":"hello"}',
+      '{"done":{"output":"hello"}}',
+      '[DONE]',
+    ])
+  })
+})
+
 // ── 7. apiFetch URL construction ──
 
 describe('apiFetch URL construction', () => {

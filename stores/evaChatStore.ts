@@ -401,7 +401,7 @@ async function processMessage(
       pendingNavigation,
     }))
 
-    useConversationsStore.getState().invalidateAndRefetch()
+    void useConversationsStore.getState().invalidateAndRefetch()
   } catch (err) {
     set((state) => ({
       messages: failAssistantMessage(

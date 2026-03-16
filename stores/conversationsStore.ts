@@ -46,9 +46,13 @@ export const useConversationsStore = create<ConversationsState>()(
       },
 
       invalidateAndRefetch: async () => {
-        set({ lastFetched: null })
-        const conversations = await fetchEvaConversations()
-        set({ evaConversations: conversations, lastFetched: Date.now() })
+        set({ lastFetched: null, error: null })
+        try {
+          const conversations = await fetchEvaConversations()
+          set({ evaConversations: conversations, lastFetched: Date.now() })
+        } catch (err) {
+          set({ error: (err as Error).message, lastFetched: null })
+        }
       },
 
       fetchMessages: async (conversationId: string) => {
