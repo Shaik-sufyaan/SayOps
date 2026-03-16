@@ -185,6 +185,7 @@ async function apiFetch<T>(endpoint: string, options?: RequestInit): Promise<T> 
   
   const res = await fetch(url, {
     ...options,
+    cache: options?.cache ?? "no-store",
     headers: {
       "Content-Type": "application/json",
       ...headers,
@@ -691,6 +692,11 @@ export async function fetchConversationsPage(options: ConversationPageOptions = 
 export async function fetchConversations(agentId?: string, scope?: 'me'): Promise<Conversation[]> {
   const res = await fetchConversationsPage({ agentId, scope })
   return res.conversations
+}
+
+export async function fetchLiveConversations(): Promise<Conversation[]> {
+  const res = await apiFetch<{ conversations: Conversation[] }>("/conversations/live")
+  return normalizeConversations(res.conversations ?? [])
 }
 
 export async function fetchEvaConversationsPage(options: PaginationOptions = {}): Promise<{ conversations: Conversation[]; hasMore: boolean }> {

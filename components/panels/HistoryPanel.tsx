@@ -1,12 +1,7 @@
 "use client"
 
 import React from "react"
-import {
-  IconActivity,
-  IconClock,
-  IconPhone,
-  IconPhoneCall,
-} from "@tabler/icons-react"
+import { IconPhoneCall } from "@tabler/icons-react"
 import { formatDistanceToNowStrict } from "date-fns"
 
 import { CallTranscript } from "@/components/call-transcript"
@@ -14,6 +9,7 @@ import { CallHistoryTable } from "@/components/call-history-table"
 import {
   fetchAgents,
   fetchConversations,
+  fetchLiveConversations,
   fetchMessages,
   mapConversationToCallRecord,
 } from "@/lib/api-client"
@@ -28,35 +24,8 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 
-const LIVE_CALL_STALE_MS = 90 * 1000
 const TERMINAL_VAPI_STATUSES = new Set(["ended", "completed", "failed", "canceled"])
-
-function StatCard({
-  icon,
-  title,
-  value,
-  description,
-}: {
-  icon: React.ReactNode
-  title: string
-  value: string
-  description: string
-}) {
-  return (
-    <Card>
-      <CardHeader className="pb-3">
-        <div className="flex items-center justify-between">
-          <CardDescription>{title}</CardDescription>
-          <span className="text-muted-foreground">{icon}</span>
-        </div>
-        <CardTitle className="text-3xl">{value}</CardTitle>
-      </CardHeader>
-      <CardContent className="pt-0">
-        <p className="text-sm text-muted-foreground">{description}</p>
-      </CardContent>
-    </Card>
-  )
-}
+const LIVE_SIGNAL_PATTERN = [12, 20, 14, 24, 11, 22, 15, 26]
 
 function formatRelativeDate(dateString: string | null): string {
   if (!dateString) return "Just now"
@@ -93,22 +62,31 @@ function getConversationLiveStatusLabel(conversation: Conversation): string | nu
   return rawStatus.replace(/[-_]+/g, " ")
 }
 
-function isLiveVoiceConversation(conversation: Conversation, now = Date.now()): boolean {
-  if (conversation.channel !== "voice") return false
-  if (conversation.status === "completed" || conversation.status === "archived") return false
-  if (typeof conversation.metadata?.vapi_end_of_call_report_at === "string") return false
-
-  const vapiStatus = typeof conversation.metadata?.vapi_status === "string"
-    ? conversation.metadata.vapi_status.trim().toLowerCase()
-    : ""
-
-  if (vapiStatus && TERMINAL_VAPI_STATUSES.has(vapiStatus)) return false
-
-  return getConversationActivityTimestamp(conversation) >= now - LIVE_CALL_STALE_MS
+function LiveSignalPill({ label }: { label: string }) {
+  return (
+    <div className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/5 px-3 py-1.5">
+      <div className="flex h-5 items-end gap-1">
+        {LIVE_SIGNAL_PATTERN.map((height, index) => (
+          <span
+            key={`${index}-${height}`}
+            className="block w-[3px] rounded-full bg-emerald-400 animate-[landing-waveform_0.7s_ease-in-out_infinite_alternate]"
+            style={{
+              height: `${height}px`,
+              animationDelay: `${index * 0.06}s`,
+            }}
+          />
+        ))}
+      </div>
+      <span className="text-[11px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
+        {label}
+      </span>
+    </div>
+  )
 }
 
 export function HistoryPanel() {
   const [conversations, setConversations] = React.useState<Conversation[]>([])
+  const [liveConversations, setLiveConversations] = React.useState<Conversation[]>([])
   const [agentNameById, setAgentNameById] = React.useState<Map<string, string>>(new Map())
   const [liveMessagesById, setLiveMessagesById] = React.useState<Record<string, Message[]>>({})
   const [liveMessagesLoading, setLiveMessagesLoading] = React.useState<Record<string, boolean>>({})
@@ -130,22 +108,60 @@ export function HistoryPanel() {
       })
     } catch (err) {
       console.error("Failed to load calls:", err)
-    } finally {
-      setLoading(false)
     }
   }, [])
 
   React.useEffect(() => {
-    void loadCalls()
+    const initialize = async () => {
+      try {
+        await Promise.all([
+          loadCalls(),
+          fetchLiveConversations().then((nextLiveConversations) => {
+            React.startTransition(() => {
+              setLiveConversations(nextLiveConversations)
+            })
+          }),
+        ])
+      } catch (err) {
+        console.error("Failed to initialize calls view:", err)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    void initialize()
 
     const intervalId = window.setInterval(() => {
       void loadCalls()
-    }, 10000)
+    }, 8000)
 
     return () => {
       window.clearInterval(intervalId)
     }
   }, [loadCalls])
+
+  const loadLiveCalls = React.useCallback(async () => {
+    try {
+      const nextLiveConversations = await fetchLiveConversations()
+      React.startTransition(() => {
+        setLiveConversations(nextLiveConversations)
+      })
+    } catch (err) {
+      console.error("Failed to load live calls:", err)
+    }
+  }, [])
+
+  React.useEffect(() => {
+    if (loading) return
+
+    const intervalId = window.setInterval(() => {
+      void loadLiveCalls()
+    }, 2000)
+
+    return () => {
+      window.clearInterval(intervalId)
+    }
+  }, [loadLiveCalls, loading])
 
   const sortedConversations = React.useMemo(
     () => [...conversations].sort(
@@ -154,13 +170,13 @@ export function HistoryPanel() {
     [conversations]
   )
 
-  const liveConversations = React.useMemo(
-    () => sortedConversations.filter((conversation) => isLiveVoiceConversation(conversation)),
-    [sortedConversations]
-  )
-
   const liveCallIds = React.useMemo(
     () => new Set(liveConversations.map((conversation) => conversation.id)),
+    [liveConversations]
+  )
+
+  const liveConversationById = React.useMemo(
+    () => new Map(liveConversations.map((conversation) => [conversation.id, conversation])),
     [liveConversations]
   )
 
@@ -196,6 +212,11 @@ export function HistoryPanel() {
     () => liveConversations.map((conversation) => conversation.id).join(":"),
     [liveConversations]
   )
+
+  React.useEffect(() => {
+    if (loading) return
+    void loadCalls()
+  }, [liveConversationKey, loadCalls, loading])
 
   const loadLiveTranscripts = React.useCallback(async () => {
     if (liveConversations.length === 0) {
@@ -265,13 +286,6 @@ export function HistoryPanel() {
     }
   }, [liveConversationKey, loadLiveTranscripts, liveConversations.length])
 
-  const todayCalls = React.useMemo(() => {
-    const startOfToday = new Date()
-    startOfToday.setHours(0, 0, 0, 0)
-    return calls.filter((call) => new Date(call.timestamp) >= startOfToday)
-  }, [calls])
-
-  const voiceToday = todayCalls.filter((call) => call.channel === "voice").length
   if (loading) {
     return (
       <div className="flex min-h-[400px] items-center justify-center">
@@ -295,33 +309,6 @@ export function HistoryPanel() {
         </div>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <StatCard
-          icon={<IconActivity className="size-4" />}
-          title="Present"
-          value={String(presentCalls.length)}
-          description="Only live phone calls with fresh activity."
-        />
-        <StatCard
-          icon={<IconClock className="size-4" />}
-          title="Today"
-          value={String(todayCalls.length)}
-          description="Phone calls started today."
-        />
-        <StatCard
-          icon={<IconPhone className="size-4" />}
-          title="Phone"
-          value={String(voiceToday)}
-          description="Voice conversations started today."
-        />
-        <StatCard
-          icon={<IconClock className="size-4" />}
-          title="Past"
-          value={String(historyCalls.length)}
-          description="Phone calls that are no longer live."
-        />
-      </div>
-
       <Card>
         <CardHeader>
           <CardTitle>Present</CardTitle>
@@ -336,8 +323,8 @@ export function HistoryPanel() {
             </div>
           ) : (
             <div className="grid gap-4 xl:grid-cols-2">
-              {presentCalls.map((call, index) => {
-                const conversation = liveConversations[index]
+              {presentCalls.map((call) => {
+                const conversation = liveConversationById.get(call.id)
                 const liveStatusLabel = conversation ? getConversationLiveStatusLabel(conversation) : null
                 const messages = liveMessagesById[call.id] ?? []
                 const lastActivity = (typeof conversation?.metadata?.vapi_runtime_seen_at === "string"
@@ -351,7 +338,7 @@ export function HistoryPanel() {
 
                 return (
                   <Card key={call.id} className="border-border/80 bg-card/70">
-                    <CardHeader className="gap-4">
+                    <CardHeader className="gap-3 pb-3">
                       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                         <div className="min-w-0">
                           <div className="flex items-center gap-3">
@@ -365,10 +352,10 @@ export function HistoryPanel() {
                           </div>
                         </div>
 
-                        <div className="flex flex-wrap gap-2 lg:justify-end">
+                        <div className="flex flex-wrap items-center gap-2 lg:justify-end">
                           <Badge>Live</Badge>
                           <Badge variant="outline">{getChannelLabel(call)}</Badge>
-                          {liveStatusLabel ? <Badge variant="secondary">{liveStatusLabel}</Badge> : null}
+                          <LiveSignalPill label={liveStatusLabel ?? "connected"} />
                         </div>
                       </div>
 
@@ -379,7 +366,7 @@ export function HistoryPanel() {
                       </div>
                     </CardHeader>
 
-                    <CardContent className="space-y-4">
+                    <CardContent className="space-y-4 pt-0">
                       <div className="rounded-xl border bg-background/70 p-4">
                         <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                           <div>
