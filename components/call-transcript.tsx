@@ -12,19 +12,54 @@ export function CallTranscript({
   loading,
   emptyText = "No transcript available.",
   className,
+  followLatest = false,
 }: {
   messages: Message[]
   loading?: boolean
   emptyText?: string
   className?: string
+  followLatest?: boolean
 }) {
+  const scrollContainerRef = React.useRef<HTMLDivElement | null>(null)
+  const [autoScrollEnabled, setAutoScrollEnabled] = React.useState(true)
   const transcriptTurns = React.useMemo(
     () => buildRenderableTranscriptTurns(messages),
     [messages]
   )
+  const lastTurnKey = React.useMemo(
+    () => transcriptTurns[transcriptTurns.length - 1]?.id ?? "empty",
+    [transcriptTurns]
+  )
+
+  const updateAutoScrollState = React.useCallback(() => {
+    const container = scrollContainerRef.current
+    if (!container) return
+
+    const distanceFromBottom = container.scrollHeight - container.scrollTop - container.clientHeight
+    const shouldAutoScroll = distanceFromBottom <= 48
+
+    setAutoScrollEnabled((current) => current === shouldAutoScroll ? current : shouldAutoScroll)
+  }, [])
+
+  React.useEffect(() => {
+    if (!followLatest || !autoScrollEnabled) return
+
+    const container = scrollContainerRef.current
+    if (!container) return
+
+    const frameId = window.requestAnimationFrame(() => {
+      container.scrollTop = container.scrollHeight
+    })
+
+    return () => window.cancelAnimationFrame(frameId)
+  }, [autoScrollEnabled, followLatest, lastTurnKey, loading])
 
   return (
-    <div className={cn("flex max-h-[400px] flex-col gap-3 overflow-y-auto pr-2", className)}>
+    <div
+      ref={scrollContainerRef}
+      onScroll={followLatest ? updateAutoScrollState : undefined}
+      className={cn("flex max-h-[400px] flex-col gap-3 overflow-y-auto pr-2", className)}
+    >
       {loading ? (
         <p className="animate-pulse text-sm text-muted-foreground">Loading transcript...</p>
       ) : transcriptTurns.length === 0 ? (

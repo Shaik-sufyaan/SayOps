@@ -28,7 +28,7 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 
-const LIVE_CALL_STALE_MS = 5 * 60 * 1000
+const LIVE_CALL_STALE_MS = 90 * 1000
 const TERMINAL_VAPI_STATUSES = new Set(["ended", "completed", "failed", "canceled"])
 
 function StatCard({
@@ -75,6 +75,7 @@ function getTimestamp(value: unknown): number | null {
 
 function getConversationActivityTimestamp(conversation: Conversation): number {
   const candidates = [
+    getTimestamp(conversation.metadata?.vapi_runtime_seen_at),
     getTimestamp(conversation.last_message_at),
     getTimestamp(conversation.metadata?.vapi_last_status_at),
     getTimestamp(conversation.started_at),
@@ -339,7 +340,10 @@ export function HistoryPanel() {
                 const conversation = liveConversations[index]
                 const liveStatusLabel = conversation ? getConversationLiveStatusLabel(conversation) : null
                 const messages = liveMessagesById[call.id] ?? []
-                const lastActivity = conversation?.last_message_at
+                const lastActivity = (typeof conversation?.metadata?.vapi_runtime_seen_at === "string"
+                  ? conversation.metadata.vapi_runtime_seen_at
+                  : null)
+                  ?? conversation?.last_message_at
                   ?? (typeof conversation?.metadata?.vapi_last_status_at === "string"
                     ? conversation.metadata.vapi_last_status_at
                     : null)
@@ -400,6 +404,7 @@ export function HistoryPanel() {
                           loading={Boolean(liveMessagesLoading[call.id])}
                           emptyText="Waiting for live transcript..."
                           className="max-h-[360px]"
+                          followLatest
                         />
                       </div>
                     </CardContent>
