@@ -9,7 +9,7 @@ import {
   type User as FirebaseUser,
 } from "firebase/auth"
 import { auth } from "@/lib/firebase"
-import { fetchCurrentUser } from "@/lib/api-client"
+import { fetchCurrentUser, fetchTermsStatus, acceptTerms } from "@/lib/api-client"
 
 const googleProvider = new GoogleAuthProvider()
 
@@ -17,10 +17,12 @@ interface AuthContextType {
   user: FirebaseUser | null
   loading: boolean
   isPlatformAdmin: boolean
+  termsAccepted: boolean | null  // null = still loading
   signInWithGoogle: () => Promise<FirebaseUser>
   signOut: () => Promise<void>
   getToken: () => Promise<string | null>
   refreshUser: () => Promise<void>
+  acceptTermsAndConditions: () => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -29,6 +31,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<FirebaseUser | null>(null)
   const [loading, setLoading] = useState(true)
   const [isPlatformAdmin, setIsPlatformAdmin] = useState(false)
+  const [termsAccepted, setTermsAccepted] = useState<boolean | null>(null)
 
   useEffect(() => {
     // Dev auth bypass must be explicitly enabled; public routes should stay public by default.
@@ -41,6 +44,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         getIdToken: async () => 'dev-token',
         reload: async () => {},
       } as any)
+      setTermsAccepted(true)
       setLoading(false)
       return
     }
@@ -49,13 +53,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(u)
       if (u) {
         try {
-          const { user: member } = await fetchCurrentUser()
+          const [{ user: member }, termsStatus] = await Promise.all([
+            fetchCurrentUser(),
+            fetchTermsStatus(),
+          ])
           setIsPlatformAdmin(member?.is_platform_admin === true)
+          setTermsAccepted(termsStatus.accepted)
         } catch {
           setIsPlatformAdmin(false)
+          setTermsAccepted(false)
         }
       } else {
         setIsPlatformAdmin(false)
+        setTermsAccepted(null)
       }
       setLoading(false)
     })
@@ -86,9 +96,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
+  const acceptTermsAndConditions = async () => {
+    await acceptTerms()
+    setTermsAccepted(true)
+  }
+
   return (
     <AuthContext.Provider
-      value={{ user, loading, isPlatformAdmin, signInWithGoogle, signOut: signOutFn, getToken, refreshUser }}
+      value={{
+        user,
+        loading,
+        isPlatformAdmin,
+        termsAccepted,
+        signInWithGoogle,
+        signOut: signOutFn,
+        getToken,
+        refreshUser,
+        acceptTermsAndConditions,
+      }}
     >
       {children}
     </AuthContext.Provider>

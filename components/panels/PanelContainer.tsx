@@ -6,6 +6,7 @@ import { useAuth } from "@/lib/auth-context"
 import { useViewParams } from "@/hooks/useViewParams"
 import { useAgentsStore } from "@/stores"
 import { Spinner } from "@/components/ui/spinner"
+import { TermsAndConditionsModal } from "@/components/TermsAndConditionsModal"
 import { DocumentsPanel } from "./DocumentsPanel"
 import { HistoryPanel } from "./HistoryPanel"
 import { IntegrationsPanel } from "./IntegrationsPanel"
@@ -22,7 +23,7 @@ import { PlatformHealthPanel } from "./PlatformHealthPanel"
 
 function PanelContainerInner() {
   const { view, agentId, orgId, setView } = useViewParams()
-  const { user, loading: authLoading } = useAuth()
+  const { user, loading: authLoading, termsAccepted } = useAuth()
   const { agents, fetchAgents } = useAgentsStore()
   const router = useRouter()
   const [visited, setVisited] = useState<Set<string>>(new Set(["calls"]))
@@ -64,6 +65,20 @@ function PanelContainerInner() {
         <Spinner className="size-8" />
       </div>
     )
+  }
+
+  // Still checking terms status
+  if (termsAccepted === null) {
+    return (
+      <div className="flex flex-1 items-center justify-center">
+        <Spinner className="size-8" />
+      </div>
+    )
+  }
+
+  // User has not yet accepted T&C — show blocking modal
+  if (termsAccepted === false) {
+    return <TermsAndConditionsModal />
   }
 
   return (

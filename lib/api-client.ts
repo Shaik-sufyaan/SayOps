@@ -1187,3 +1187,15 @@ export async function fetchStats(): Promise<DashboardStats> {
     }
   }
 }
+
+// ---- Terms & Conditions ----
+
+export async function fetchTermsStatus(): Promise<{ accepted: boolean; terms_version: string }> {
+  return apiFetch<{ accepted: boolean; terms_version: string }>('/terms/status')
+}
+
+export async function acceptTerms(): Promise<{ accepted: boolean; terms_version: string }> {
+  return apiFetch<{ accepted: boolean; terms_version: string }>('/terms/accept', {
+    method: 'POST',
+  })
+}
