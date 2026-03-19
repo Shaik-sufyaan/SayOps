@@ -13,6 +13,8 @@ import MarketingFooter from "@/components/marketing/MarketingFooter"
 export default function HowItWorksClient() {
   const { signInWithGoogle, loading } = useAuth()
   const [signingIn, setSigningIn] = useState(false)
+  const topSectionBackground = "linear-gradient(180deg, #ece6f4 0%, #e4ddef 52%, #ddd5e8 100%)"
+  const stepsSectionBackground = "linear-gradient(180deg, #f8f4ec 0%, #f3eee5 48%, #ede6da 100%)"
 
   const handleGoogleSignIn = async () => {
     setSigningIn(true)
@@ -31,7 +33,7 @@ export default function HowItWorksClient() {
   return (
     <div className="min-h-screen bg-[#f6f4ef] text-[#111827]">
       {/* Nav */}
-      <header className="sticky top-0 z-20 border-b border-[#0f172a]/8 bg-[#f6f4ef]/90 backdrop-blur-sm">
+      <header className="relative z-20" style={{ background: topSectionBackground }}>
         <div className="flex items-center justify-between px-6 py-4 md:px-10 lg:px-16">
           <Link href="/" className="flex items-center gap-2 text-[15px] text-[#5f6670] transition-colors hover:text-[#111827]">
             <ArrowLeft className="size-4" />
@@ -50,7 +52,7 @@ export default function HowItWorksClient() {
 
       <main>
         {/* EVA Onboarding Demo — dark section */}
-        <section className="relative w-full overflow-hidden px-6 py-16 md:px-10 md:py-20 lg:px-16" style={{ background: 'linear-gradient(180deg, #ece6f4 0%, #e4ddef 52%, #ddd5e8 100%)' }}>
+        <section className="relative w-full overflow-hidden px-6 py-16 md:px-10 md:py-20 lg:px-16" style={{ background: topSectionBackground }}>
           {/* Subtle purple glow */}
           <div className="pointer-events-none absolute left-1/2 top-0 -translate-x-1/2 h-[500px] w-[700px] rounded-full opacity-30" style={{ background: 'radial-gradient(ellipse, rgba(124,111,247,0.18) 0%, transparent 70%)' }} />
           <div className="relative mx-auto max-w-5xl">
@@ -65,7 +67,7 @@ export default function HowItWorksClient() {
         </section>
 
         {/* Step track — purple-tinted gradient */}
-        <section className="relative overflow-hidden px-6 pb-16 pt-16 md:px-10 lg:px-16" style={{ background: 'linear-gradient(180deg, #f8f4ec 0%, #f3eee5 48%, #ede6da 100%)' }}>
+        <section className="relative overflow-hidden px-6 pb-16 pt-16 md:px-10 lg:px-16" style={{ background: stepsSectionBackground }}>
           {/* Radial glow */}
           <div className="pointer-events-none absolute right-0 top-1/4 h-[600px] w-[600px] rounded-full opacity-40" style={{ background: 'radial-gradient(circle, rgba(124,111,247,0.10) 0%, transparent 65%)' }} />
 

@@ -274,7 +274,7 @@ function PaymentCard() {
   )
 }
 
-function ForwardingCard() {
+function ForwardingCard({ forwarded }: { forwarded: boolean }) {
   return (
     <div className="animate-in slide-in-from-bottom-3 fade-in px-4 pt-4 duration-500">
       <div className="overflow-hidden rounded-[28px] border border-[#fed7aa] bg-[linear-gradient(180deg,#fff7ed_0%,#fff1f2_100%)] shadow-[0_18px_40px_-28px_rgba(15,23,42,0.25)]">
@@ -283,8 +283,12 @@ function ForwardingCard() {
             <PhoneForwarded className="size-4 text-[#d97706]" />
           </div>
           <div>
-            <p className="text-[13px] font-semibold text-[#111827]">Forwarding Call</p>
-            <p className="text-[10px] text-[#b45309]">Transferring to Office Manager</p>
+            <p className="text-[13px] font-semibold text-[#111827]">
+              {forwarded ? "Call Forwarded Successfully" : "Forwarding Call"}
+            </p>
+            <p className="text-[10px] text-[#b45309]">
+              {forwarded ? "Office Manager is now on the line" : "Transferring to Office Manager"}
+            </p>
           </div>
         </div>
 
@@ -308,10 +312,19 @@ function ForwardingCard() {
             </div>
           </div>
 
-          <div className="mt-3 flex items-center justify-center gap-2">
-            <span className="h-2 w-2 animate-pulse rounded-full bg-[#f59e0b]" />
-            <span className="text-[11px] font-medium text-[#b45309]">Connecting...</span>
-          </div>
+          {forwarded ? (
+            <div className="mt-3 flex items-center justify-center gap-2">
+              <span className="flex h-5 w-5 items-center justify-center rounded-full bg-[#dcfce7] text-[#15803d]">
+                <Check className="size-3" />
+              </span>
+              <span className="text-[11px] font-semibold text-[#15803d]">Call forwarded successfully</span>
+            </div>
+          ) : (
+            <div className="mt-3 flex items-center justify-center gap-2">
+              <span className="h-2 w-2 animate-pulse rounded-full bg-[#f59e0b]" />
+              <span className="text-[11px] font-medium text-[#b45309]">Connecting...</span>
+            </div>
+          )}
         </div>
       </div>
     </div>
@@ -325,6 +338,7 @@ export default function TwoPhoneCapabilitiesDemo() {
   const [lineIndex, setLineIndex] = useState(-1)
   const [typedChars, setTypedChars] = useState(0)
   const [phone2State, setPhone2State] = useState(0)
+  const [forwardingComplete, setForwardingComplete] = useState(false)
   const [seconds, setSeconds] = useState(0)
   const [speaker, setSpeaker] = useState<"agent" | "customer" | null>(null)
   const [isPaused, setIsPaused] = useState(false)
@@ -378,12 +392,37 @@ export default function TwoPhoneCapabilitiesDemo() {
     if (container) container.scrollTop = container.scrollHeight
   }, [lineIndex, typedChars])
 
+  useEffect(() => {
+    let cancelled = false
+
+    if (phone2State !== 4) {
+      setForwardingComplete(false)
+      return
+    }
+
+    setForwardingComplete(false)
+
+    const markForwarded = async () => {
+      await waitMs(2000)
+      if (!cancelled && !abortRef.current && phone2State === 4) {
+        setForwardingComplete(true)
+      }
+    }
+
+    void markForwarded()
+
+    return () => {
+      cancelled = true
+    }
+  }, [phone2State, waitMs])
+
   const run = useCallback(async () => {
     abortRef.current = false
     setPhase("idle")
     setLineIndex(-1)
     setTypedChars(0)
     setPhone2State(0)
+    setForwardingComplete(false)
     setSeconds(0)
     setSpeaker(null)
     setIsPaused(false)
@@ -582,21 +621,20 @@ export default function TwoPhoneCapabilitiesDemo() {
           </div>
         </PhoneShell>
 
-        <PhoneShell label="Agent actions" indicatorClassName="bg-black/90">
-          <div className="flex h-full flex-col bg-[#f2f2f7] text-[#111827]">
-            <div className="flex items-center justify-between px-5 pt-4 text-[12px] font-semibold">
-              <span>9:41</span>
-              <StatusCluster batteryLevel={24} />
-            </div>
+        <div className="flex w-full max-w-[560px] flex-col">
+          <p className="mb-3 text-center text-xs font-semibold uppercase tracking-[0.18em] text-[#5b6170] md:text-left">
+            Agent actions
+          </p>
 
-            <div className="border-b border-[#e5e5ea] bg-[#f8f8fa] px-4 pb-3 pt-3">
+          <div className="overflow-hidden rounded-[36px] border border-white/65 bg-white/[0.82] shadow-[0_36px_90px_-42px_rgba(15,23,42,0.38)] backdrop-blur-xl">
+            <div className="border-b border-[#e7eaf0] bg-[linear-gradient(180deg,#fbfbfe_0%,#f7f7fb_100%)] px-5 py-4">
               <div className="flex items-center gap-3">
-                <div className="flex h-11 w-11 items-center justify-center rounded-full bg-[#dfe3ff] text-sm font-semibold text-[#4f46e5]">
+                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#ecebff] text-base font-bold text-[#7c6ff7]">
                   A
                 </div>
                 <div className="min-w-0">
-                  <p className="text-[16px] font-semibold leading-none text-[#111827]">Agent Actions</p>
-                  <p className="mt-1 text-[11px] text-[#6b7280]">Live memory, tools, and escalation</p>
+                  <p className="text-[18px] font-semibold leading-none text-[#111827]">Agent Actions</p>
+                  <p className="mt-1.5 text-[12px] text-[#6b7280]">Live memory, tools, and escalation</p>
                 </div>
                 {phone2State > 0 && (
                   <span className="ml-auto flex items-center gap-1 rounded-full bg-[#e9f9ef] px-2.5 py-1 text-[10px] font-semibold text-[#15803d]">
@@ -608,11 +646,11 @@ export default function TwoPhoneCapabilitiesDemo() {
             </div>
 
             <div
-              className="flex-1 overflow-y-auto bg-[linear-gradient(180deg,#fbfbfe_0%,#f2f2f7_100%)]"
+              className="min-h-[560px] overflow-y-auto bg-[linear-gradient(180deg,#fbfbfe_0%,#f2f2f7_100%)]"
               style={{ scrollbarWidth: "none" }}
             >
               {phone2State === 0 && (
-                <div className="flex h-full items-center justify-center">
+                <div className="flex min-h-[560px] items-center justify-center">
                   <div className="text-center">
                     <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-[#ecebff] text-base font-bold text-[#7c6ff7]">
                       A
@@ -625,16 +663,16 @@ export default function TwoPhoneCapabilitiesDemo() {
               )}
 
               {phone2State > 0 && (
-                <div key={phone2State}>
+                <div key={phone2State} className="pb-4">
                   {phone2State === 1 && <MemoryCard />}
                   {phone2State === 2 && <CalendarCard />}
                   {phone2State === 3 && <PaymentCard />}
-                  {phone2State === 4 && <ForwardingCard />}
+                  {phone2State === 4 && <ForwardingCard forwarded={forwardingComplete} />}
                 </div>
               )}
             </div>
           </div>
-        </PhoneShell>
+        </div>
       </div>
 
       <div className="mt-8 flex flex-wrap items-center justify-center gap-2">
