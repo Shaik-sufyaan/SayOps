@@ -42,12 +42,38 @@ export type DemoCallEndEvent = {
   durationLabel: string
 }
 
+export type DemoEmailAppearEvent = {
+  type: "email_appear"
+}
+
+export type DemoEmailOpenEvent = {
+  type: "email_open"
+}
+
+export type DemoClaimCompleteEvent = {
+  type: "claim_complete"
+}
+
+export type DemoProvisioningEvent = {
+  type: "provisioning"
+}
+
 export type DemoEvent =
   | DemoSpeechEvent
   | DemoActionEvent
   | DemoRingingEvent
   | DemoConnectedEvent
   | DemoCallEndEvent
+  | DemoEmailAppearEvent
+  | DemoEmailOpenEvent
+  | DemoClaimCompleteEvent
+  | DemoProvisioningEvent
+
+export type TwoPhoneScriptLine = {
+  speaker: "agent" | "customer"
+  text: string
+  phone2State?: number
+}
 
 export type DemoOwnerMessage = {
   triggerAfterEvent: number
@@ -222,73 +248,37 @@ export const landingContent = {
     helperText:
       "Pick a scenario, replay the flow, and adjust the speed. The product story should be visible without explanation.",
     supportPhoneNumber: "+1 (470) 293-9459",
-    scenarioOrder: ["cafe", "ecommerce", "repair"] as const,
+    scenarioOrder: ["hairsalon", "ecommerce", "repair"] as const,
     scenarios: {
-      cafe: {
-        label: "Cafe",
-        business: "Nisha's Bakery & Cafe",
-        callerName: "Jordan",
-        callerNumber: "+1 (555) 234-8901",
+      hairsalon: {
+        label: "Hair Salon",
+        business: "Stella's Hair Studio",
+        callerName: "Marcus",
+        callerNumber: "+1 (555) 312-7640",
         ownerLabel: "Business Owner",
-        accent: "#d97706",
-        summary: "Checks inventory, reserves an item, and sends a concise pickup summary.",
+        accent: "#be185d",
+        summary: "Books a cut and color appointment, confirms the slot, and sends the owner a booking summary.",
         events: [
           { type: "ringing", durationMs: 1500 },
           { type: "connected" },
-          {
-            type: "speech",
-            speaker: "agent",
-            text: "Hi, thanks for calling Nisha's Bakery and Cafe. How can I help you today?",
-          },
-          {
-            type: "speech",
-            speaker: "customer",
-            text: "Hi, do you have gluten-free scones today?",
-          },
-          {
-            type: "speech",
-            speaker: "agent",
-            text: "Let me check today's menu for you.",
-          },
-          {
-            type: "action",
-            text: "Checking today's inventory...",
-          },
-          {
-            type: "speech",
-            speaker: "agent",
-            text: "Yes. We have two gluten-free scones left, blueberry and almond. Would you like me to reserve one for pickup?",
-          },
-          {
-            type: "speech",
-            speaker: "customer",
-            text: "Yes please, I'll pick up in 40 minutes.",
-          },
-          {
-            type: "speech",
-            speaker: "agent",
-            text: "Reserved under your name, Jordan. Pick up at 11:50. We'll hold it for 30 minutes.",
-          },
-          {
-            type: "action",
-            text: "Created ticket L-552 and added a reservation note",
-          },
-          {
-            type: "speech",
-            speaker: "customer",
-            text: "Perfect, thank you.",
-          },
-          {
-            type: "speech",
-            speaker: "agent",
-            text: "You're welcome. See you at 11:50. Have a great day.",
-          },
-          { type: "call_end", durationLabel: "0:20" },
+          { type: "speech", speaker: "agent", text: "Thank you for calling Stella's Hair Studio. How can I help you today?" },
+          { type: "speech", speaker: "customer", text: "Hi, I'd like to book a haircut and color for this Friday." },
+          { type: "speech", speaker: "agent", text: "Absolutely. Let me check Friday's availability for you." },
+          { type: "action", text: "Checking stylist calendar for Friday..." },
+          { type: "speech", speaker: "agent", text: "We have openings at 11 AM and 2 PM on Friday. A cut and color takes about 2 hours. Which slot works for you?" },
+          { type: "speech", speaker: "customer", text: "2 PM would be perfect." },
+          { type: "speech", speaker: "agent", text: "Great. Can I get your name to confirm the booking?" },
+          { type: "speech", speaker: "customer", text: "Marcus." },
+          { type: "action", text: "Booking appointment: Marcus — Cut & Color, Friday 2:00 PM" },
+          { type: "speech", speaker: "agent", text: "Done, Marcus. You're booked for a cut and color this Friday at 2 PM. We'll send you a reminder the morning of your appointment." },
+          { type: "speech", speaker: "customer", text: "That's great, thank you." },
+          { type: "speech", speaker: "agent", text: "Looking forward to seeing you Friday. Have a great day!" },
+          { type: "call_end", durationLabel: "0:28" },
         ],
         ownerMessages: [
           {
-            triggerAfterEvent: 12,
-            text: "Call summary: reserved a blueberry gluten-free scone for Jordan, pickup 11:50 AM. Ticket L-552 created. 20s call.",
+            triggerAfterEvent: 11,
+            text: "New booking: Marcus — Cut & Color, Friday at 2:00 PM. Appointment confirmed.",
           },
         ],
       },
@@ -303,69 +293,22 @@ export const landingContent = {
         events: [
           { type: "ringing", durationMs: 1500 },
           { type: "connected" },
-          {
-            type: "speech",
-            speaker: "agent",
-            text: "Hello, Mateo's Outdoor Gear. How can I assist you?",
-          },
-          {
-            type: "speech",
-            speaker: "customer",
-            text: "My order H-1993 shows delivered but it never arrived. I'd like a refund.",
-          },
-          {
-            type: "speech",
-            speaker: "agent",
-            text: "I'm sorry to hear that, Rachel. Let me pull up your order.",
-          },
-          {
-            type: "action",
-            text: "Looking up order H-1993 in HubSpot",
-          },
-          {
-            type: "speech",
-            speaker: "agent",
-            text: "I found order H-1993. Tracking shows delivered at 2:12 PM to the front door. I'll initiate a claim and process a full refund of $42. Would you prefer a refund or a replacement?",
-          },
-          {
-            type: "speech",
-            speaker: "customer",
-            text: "Refund please.",
-          },
-          {
-            type: "action",
-            text: "Processing refund for $42.00 via Stripe",
-          },
-          {
-            type: "speech",
-            speaker: "agent",
-            text: "Refund of $42 processed. Confirmation sent to your email. Please allow 3-5 business days. I've also filed a courier claim and created ticket T-772.",
-          },
-          {
-            type: "action",
-            text: "Ticket T-772 created and courier claim opened",
-          },
-          {
-            type: "speech",
-            speaker: "customer",
-            text: "That was fast. Thank you.",
-          },
-          {
-            type: "speech",
-            speaker: "agent",
-            text: "Happy to help. Have a good day, Rachel.",
-          },
+          { type: "speech", speaker: "agent", text: "Hello, Mateo's Outdoor Gear. How can I assist you?" },
+          { type: "speech", speaker: "customer", text: "My order H-1993 shows delivered but it never arrived. I'd like a refund." },
+          { type: "speech", speaker: "agent", text: "I'm sorry to hear that, Rachel. Let me pull up your order." },
+          { type: "action", text: "Looking up order H-1993 in HubSpot" },
+          { type: "speech", speaker: "agent", text: "I found order H-1993. Tracking shows delivered at 2:12 PM to the front door. I'll initiate a claim and process a full refund of $42. Would you prefer a refund or a replacement?" },
+          { type: "speech", speaker: "customer", text: "Refund please." },
+          { type: "action", text: "Processing refund for $42.00 via Stripe" },
+          { type: "speech", speaker: "agent", text: "Refund of $42 processed. Confirmation sent to your email. Please allow 3-5 business days. I've also filed a courier claim and created ticket T-772." },
+          { type: "action", text: "Ticket T-772 created and courier claim opened" },
+          { type: "speech", speaker: "customer", text: "That was fast. Thank you." },
+          { type: "speech", speaker: "agent", text: "Happy to help. Have a good day, Rachel." },
           { type: "call_end", durationLabel: "0:35" },
         ],
         ownerMessages: [
-          {
-            triggerAfterEvent: 8,
-            text: "Refund in progress: $42 for order H-1993 marked as not delivered. Processing via Stripe.",
-          },
-          {
-            triggerAfterEvent: 13,
-            text: "Refund completed for H-1993. Ticket T-772 created and courier claim opened. 35s call.",
-          },
+          { triggerAfterEvent: 8, text: "Refund in progress: $42 for order H-1993 marked as not delivered. Processing via Stripe." },
+          { triggerAfterEvent: 13, text: "Refund completed for H-1993. Ticket T-772 created and courier claim opened. 35s call." },
         ],
       },
       repair: {
@@ -379,79 +322,24 @@ export const landingContent = {
         events: [
           { type: "ringing", durationMs: 1500 },
           { type: "connected" },
-          {
-            type: "speech",
-            speaker: "agent",
-            text: "Ahmed's Appliance Repair, how can I help you?",
-          },
-          {
-            type: "speech",
-            speaker: "customer",
-            text: "Hi, my oven stopped heating. I think it's the heating element. Can someone come take a look?",
-          },
-          {
-            type: "speech",
-            speaker: "agent",
-            text: "I can help with that. Let me check our available time slots.",
-          },
-          {
-            type: "action",
-            text: "Checking technician calendar",
-          },
-          {
-            type: "speech",
-            speaker: "agent",
-            text: "We have a tech available tomorrow at 9 AM. The diagnostic fee is $45. If we do the repair on-site, that fee is waived. Does 9 AM work?",
-          },
-          {
-            type: "speech",
-            speaker: "customer",
-            text: "Yes, 9 AM works.",
-          },
-          {
-            type: "action",
-            text: "Booked tomorrow 9 AM and created ticket R-308",
-          },
-          {
-            type: "speech",
-            speaker: "agent",
-            text: "You're booked for 9 AM tomorrow. We also offer a 12-month maintenance plan for $15 a month that covers diagnostics and priority scheduling. Would you be interested?",
-          },
-          {
-            type: "speech",
-            speaker: "customer",
-            text: "That actually sounds good. Sign me up.",
-          },
-          {
-            type: "action",
-            text: "Enrolling Lisa in the 12-month maintenance plan",
-          },
-          {
-            type: "speech",
-            speaker: "agent",
-            text: "Done. You're enrolled. You'll get a text reminder one hour before tomorrow's appointment. Anything else, Lisa?",
-          },
-          {
-            type: "speech",
-            speaker: "customer",
-            text: "No, that's everything. Thanks.",
-          },
-          {
-            type: "speech",
-            speaker: "agent",
-            text: "See you tomorrow at 9. Have a good evening.",
-          },
+          { type: "speech", speaker: "agent", text: "Ahmed's Appliance Repair, how can I help you?" },
+          { type: "speech", speaker: "customer", text: "Hi, my oven stopped heating. I think it's the heating element. Can someone come take a look?" },
+          { type: "speech", speaker: "agent", text: "I can help with that. Let me check our available time slots." },
+          { type: "action", text: "Checking technician calendar" },
+          { type: "speech", speaker: "agent", text: "We have a tech available tomorrow at 9 AM. The diagnostic fee is $45. If we do the repair on-site, that fee is waived. Does 9 AM work?" },
+          { type: "speech", speaker: "customer", text: "Yes, 9 AM works." },
+          { type: "action", text: "Booked tomorrow 9 AM and created ticket R-308" },
+          { type: "speech", speaker: "agent", text: "You're booked for 9 AM tomorrow. We also offer a 12-month maintenance plan for $15 a month that covers diagnostics and priority scheduling. Would you be interested?" },
+          { type: "speech", speaker: "customer", text: "That actually sounds good. Sign me up." },
+          { type: "action", text: "Enrolling Lisa in the 12-month maintenance plan" },
+          { type: "speech", speaker: "agent", text: "Done. You're enrolled. You'll get a text reminder one hour before tomorrow's appointment. Anything else, Lisa?" },
+          { type: "speech", speaker: "customer", text: "No, that's everything. Thanks." },
+          { type: "speech", speaker: "agent", text: "See you tomorrow at 9. Have a good evening." },
           { type: "call_end", durationLabel: "0:30" },
         ],
         ownerMessages: [
-          {
-            triggerAfterEvent: 8,
-            text: "New booking: Lisa at 9 AM tomorrow for an oven diagnostic. Ticket R-308.",
-          },
-          {
-            triggerAfterEvent: 15,
-            text: "Booking confirmed for tomorrow at 9 AM. Customer accepted the 12-month maintenance plan upgrade. 30s call.",
-          },
+          { triggerAfterEvent: 8, text: "New booking: Lisa at 9 AM tomorrow for an oven diagnostic. Ticket R-308." },
+          { triggerAfterEvent: 15, text: "Booking confirmed for tomorrow at 9 AM. Customer accepted the 12-month maintenance plan upgrade. 30s call." },
         ],
       },
     } satisfies Record<string, DemoScenario>,
@@ -459,3 +347,72 @@ export const landingContent = {
 } as const
 
 export type DemoScenarioKey = (typeof landingContent.demo.scenarioOrder)[number]
+
+export const evaOnboardingDemo = {
+  supportPhoneNumber: "+1 (470) 293-9459",
+  scenario: {
+    label: "Onboarding",
+    business: "",
+    callerName: "Business Owner",
+    callerNumber: "owner@gmail.com",
+    ownerLabel: "Business Owner",
+    accent: "#7c6ff7",
+    summary: "EVA calls the owner, claims the workspace via email, and configures the business agent — all in one call.",
+    events: [
+      { type: "ringing", durationMs: 2000 },
+      { type: "connected" },
+      { type: "speech", speaker: "agent", text: "Hi, this is EVA from SpeakOps. I can help you set up your business agent now." },
+      { type: "speech", speaker: "agent", text: "Are you ready to create your account?" },
+      { type: "speech", speaker: "customer", text: "Yes." },
+      { type: "speech", speaker: "agent", text: "What Gmail address should I use for your owner login?" },
+      { type: "speech", speaker: "customer", text: "owner@gmail.com." },
+      { type: "action", text: "Sending claim email to owner@gmail.com..." },
+      { type: "speech", speaker: "agent", text: "Perfect. I've sent a secure claim email from eva@0lumens.com. Open that email and tap Claim Workspace." },
+      { type: "speech", speaker: "agent", text: "I'll stay with you while you do that." },
+      { type: "email_appear" },
+      { type: "email_open" },
+      { type: "claim_complete" },
+      { type: "speech", speaker: "agent", text: "I can see the workspace claim is complete. Let's configure your business agent." },
+      { type: "speech", speaker: "agent", text: "What should customers call this agent?" },
+      { type: "speech", speaker: "customer", text: "Eva." },
+      { type: "speech", speaker: "agent", text: "What is your website URL?" },
+      { type: "speech", speaker: "customer", text: "speakops.ai" },
+      { type: "speech", speaker: "agent", text: "What are the top requests this agent should handle?" },
+      { type: "speech", speaker: "customer", text: "Booking appointments, answering FAQs, taking messages." },
+      { type: "speech", speaker: "agent", text: "What policies should it follow?" },
+      { type: "speech", speaker: "customer", text: "Always be polite, never promise refunds without manager approval." },
+      { type: "speech", speaker: "agent", text: "What tone should it use with customers?" },
+      { type: "speech", speaker: "customer", text: "Friendly and professional." },
+      { type: "speech", speaker: "agent", text: "When should it escalate to a human?" },
+      { type: "speech", speaker: "customer", text: "If the customer is upset or asks for a refund." },
+      { type: "speech", speaker: "agent", text: "Anything else you want it to know?" },
+      { type: "speech", speaker: "customer", text: "No, that's everything." },
+      { type: "speech", speaker: "agent", text: "Perfect. Your business agent number is now being configured. You'll be able to use the agent shortly." },
+      { type: "provisioning" },
+      { type: "call_end", durationLabel: "2:14" },
+    ] as DemoEvent[],
+    ownerMessages: [],
+  } satisfies DemoScenario,
+} as const
+
+export const twoPhoneDemo = {
+  heading: "See every capability in one call",
+  subtitle:
+    "Watch your agent recall history, reschedule, send payment, and escalate — all without missing a beat.",
+  business: "BrightPath Dental",
+  callerName: "Sarah",
+  callerNumber: "+1 (555) 847-2190",
+  script: [
+    { speaker: "agent" as const, text: "Thanks for calling BrightPath Dental. How can I help today?" },
+    { speaker: "customer" as const, text: "Hi, this is Sarah. I need to move tomorrow's appointment, and I still need to pay my balance." },
+    { speaker: "agent" as const, text: "Of course, Sarah. I see you prefer afternoon appointments.", phone2State: 1 },
+    { speaker: "agent" as const, text: "Your current appointment is tomorrow at 10 AM. I can move that and send your payment link." },
+    { speaker: "agent" as const, text: "I have Thursday at 2 PM or 3:30 PM available." },
+    { speaker: "customer" as const, text: "2 PM works.", phone2State: 2 },
+    { speaker: "agent" as const, text: "Done. You're now booked for Thursday at 2 PM." },
+    { speaker: "agent" as const, text: "I've sent a secure payment link for your $85 balance.", phone2State: 3 },
+    { speaker: "customer" as const, text: "Can I split that into two payments? I want to talk to someone." },
+    { speaker: "agent" as const, text: "Yes. I'm forwarding your call now and I'll brief the office manager.", phone2State: 4 },
+    { speaker: "agent" as const, text: "One moment while I connect you." },
+  ] satisfies TwoPhoneScriptLine[],
+}
