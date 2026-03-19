@@ -12,6 +12,7 @@ import {
   IconShieldX,
 } from "@tabler/icons-react"
 import { Button } from "@/components/ui/button"
+import { Checkbox } from "@/components/ui/checkbox"
 import {
   Card,
   CardContent,
@@ -19,9 +20,10 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
-import { completeOwnerClaim, fetchOwnerClaimPreview } from "@/lib/api-client"
+import { completeOwnerClaim, fetchOwnerClaimPreview, acceptTerms } from "@/lib/api-client"
 import type { OwnerClaimPreview } from "@/lib/types"
 import { useAuth } from "@/lib/auth-context"
+import { TermsContent } from "@/components/TermsContent"
 
 function normalizeEmail(value?: string | null): string {
   return (value || "").trim().toLowerCase()
@@ -82,71 +84,52 @@ function ClaimPageContent() {
   const [error, setError] = useState("")
   const completionStarted = useRef(false)
 
+  // T&C step state
+  const [termsStep, setTermsStep] = useState(false)
+  const [termsScrolled, setTermsScrolled] = useState(false)
+  const [termsChecked, setTermsChecked] = useState(false)
+  const termsScrollRef = useRef<HTMLDivElement>(null)
+
   useEffect(() => {
     let active = true
 
     if (!token) {
       setPreviewLoading(false)
       setError("This claim link is missing its token.")
-      return () => {
-        active = false
-      }
+      return () => { active = false }
     }
 
     setPreviewLoading(true)
     setError("")
 
     fetchOwnerClaimPreview(token)
-      .then((claim) => {
-        if (!active) return
-        setPreview(claim)
-      })
+      .then((claim) => { if (active) setPreview(claim) })
       .catch((err: unknown) => {
         if (!active) return
         setPreview(null)
         setError(err instanceof Error ? err.message : "Failed to load this claim link.")
       })
-      .finally(() => {
-        if (!active) return
-        setPreviewLoading(false)
-      })
+      .finally(() => { if (active) setPreviewLoading(false) })
 
-    return () => {
-      active = false
-    }
+    return () => { active = false }
   }, [token])
 
+  // When user signs in with the correct email, show T&C before completing the claim
   useEffect(() => {
     if (!user || !preview || preview.status !== "pending" || completionStarted.current) return
 
     const signedInEmail = normalizeEmail(user.email)
     const expectedEmail = normalizeEmail(preview.expectedEmail)
 
-    if (expectedEmail && signedInEmail && signedInEmail !== expectedEmail) {
-      return
-    }
+    if (expectedEmail && signedInEmail && signedInEmail !== expectedEmail) return
 
-    completionStarted.current = true
-    setWorking(true)
-    setError("")
-
-    completeOwnerClaim(token)
-      .then(() => {
-        router.replace("/dashboard?view=integrations&owner_claim_completed=true")
-      })
-      .catch((err: unknown) => {
-        completionStarted.current = false
-        setError(err instanceof Error ? err.message : "Failed to complete this workspace claim.")
-      })
-      .finally(() => {
-        setWorking(false)
-      })
-  }, [preview, router, token, user])
+    // Show the T&C step — claim fires only after acceptance
+    setTermsStep(true)
+  }, [user, preview])
 
   const handleGoogleSignIn = async () => {
     setWorking(true)
     setError("")
-
     try {
       await signInWithGoogle()
     } catch (err: any) {
@@ -158,9 +141,112 @@ function ClaimPageContent() {
     }
   }
 
+  const handleTermsAccept = async () => {
+    if (!termsChecked || !termsScrolled) return
+    if (completionStarted.current) return
+
+    completionStarted.current = true
+    setWorking(true)
+    setError("")
+
+    try {
+      await acceptTerms()
+      await completeOwnerClaim(token)
+      router.replace("/dashboard?view=integrations&owner_claim_completed=true")
+    } catch (err: unknown) {
+      completionStarted.current = false
+      setWorking(false)
+      setError(err instanceof Error ? err.message : "Failed to complete this workspace claim.")
+    }
+  }
+
+  const handleTermsDecline = async () => {
+    await signOut()
+    router.replace("/login")
+  }
+
   const signedInEmail = normalizeEmail(user?.email)
   const expectedEmail = normalizeEmail(preview?.expectedEmail)
   const wrongSignedInUser = !!preview && preview.status === "pending" && !!signedInEmail && !!expectedEmail && signedInEmail !== expectedEmail
+
+  // T&C acceptance card — shown after sign-in, before claim fires
+  if (termsStep && !completionStarted.current) {
+    return (
+      <ClaimPageShell>
+        <Card className="flex flex-col max-h-[85vh]">
+          <CardHeader className="text-center shrink-0">
+            <CardTitle className="text-2xl">Terms &amp; Conditions</CardTitle>
+            <CardDescription>
+              Read and accept before your workspace is activated.
+            </CardDescription>
+          </CardHeader>
+
+          <CardContent className="flex flex-col min-h-0 flex-1 p-0">
+            {/* Scrollable T&C text */}
+            <TermsContent
+              scrollRef={termsScrollRef}
+              onScrolledToBottom={() => setTermsScrolled(true)}
+              className="flex-1 overflow-y-auto px-6 py-4 text-sm text-foreground space-y-4 min-h-0 border-t border-b"
+            />
+
+            {/* Footer */}
+            <div className="px-6 py-4 shrink-0 space-y-3">
+              {!termsScrolled && (
+                <p className="text-xs text-muted-foreground text-center">
+                  Please scroll to the bottom to read all terms before accepting.
+                </p>
+              )}
+
+              <label
+                className={`flex items-start gap-3 cursor-pointer select-none ${
+                  !termsScrolled ? "opacity-40 pointer-events-none" : ""
+                }`}
+              >
+                <Checkbox
+                  checked={termsChecked}
+                  onCheckedChange={(v) => setTermsChecked(v === true)}
+                  className="mt-0.5"
+                />
+                <span className="text-sm leading-snug">
+                  I have read and understood the Terms &amp; Conditions, including that SpeakOps
+                  platform admins may access raw conversation data for debugging and operational purposes.
+                </span>
+              </label>
+
+              {error && (
+                <div className="rounded-md bg-destructive/10 px-4 py-3 text-sm text-destructive">
+                  {error}
+                </div>
+              )}
+
+              <div className="flex gap-3 justify-end">
+                <Button
+                  variant="outline"
+                  onClick={handleTermsDecline}
+                  disabled={working}
+                >
+                  Decline
+                </Button>
+                <Button
+                  onClick={handleTermsAccept}
+                  disabled={!termsChecked || !termsScrolled || working}
+                >
+                  {working ? (
+                    <span className="flex items-center gap-2">
+                      <IconLoader2 className="size-4 animate-spin" />
+                      Activating workspace…
+                    </span>
+                  ) : (
+                    "I Accept — Activate Workspace"
+                  )}
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </ClaimPageShell>
+    )
+  }
 
   return (
     <ClaimPageShell>
@@ -238,7 +324,7 @@ function ClaimPageContent() {
                 {user && !wrongSignedInUser ? (
                   <div className="flex items-center justify-center gap-3 rounded-md border px-4 py-6 text-sm text-muted-foreground">
                     <IconLoader2 className="size-4 animate-spin" />
-                    <span>{working ? "Completing your workspace claim..." : "Preparing your dashboard..."}</span>
+                    <span>Just a moment...</span>
                   </div>
                 ) : (
                   <Button
