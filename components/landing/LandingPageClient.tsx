@@ -1,14 +1,14 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useRef } from "react"
 import Link from "next/link"
-import { useRouter } from "next/navigation"
-import { ArrowRight } from "lucide-react"
+import { Phone } from "lucide-react"
 import { IconBrandGoogle } from "@tabler/icons-react"
 import { Button } from "@/components/ui/button"
 import { useAuth } from "@/lib/auth-context"
 import { landingContent } from "@/lib/landing-content"
 import PhoneDemoShowcase from "@/components/landing/PhoneDemoShowcase"
+import TwoPhoneCapabilitiesDemo from "@/components/landing/TwoPhoneCapabilitiesDemo"
 import MarketingFooter from "@/components/marketing/MarketingFooter"
 import Grainient from "@/components/Grainient"
 
@@ -16,34 +16,95 @@ type SectionCardProps = {
   title: string
   description: string
   badge?: string
+  accent?: string
 }
 
-function SectionCard({ title, description, badge }: SectionCardProps) {
+function SectionCard({ title, description, badge, accent }: SectionCardProps) {
   return (
-    <article className="rounded-[26px] bg-white px-5 py-5 shadow-[0_14px_34px_-30px_rgba(15,23,42,0.28)]">
+    <article
+      className="group relative overflow-hidden rounded-[22px] border border-white/70 bg-white/[0.05] px-6 py-6 shadow-[0_8px_30px_-10px_rgba(0,0,0,0.18),0_18px_44px_-22px_rgba(15,23,42,0.28)] backdrop-blur-xl transition-all duration-300 hover:-translate-y-1.5 hover:border-white/90 hover:bg-white/[0.08] hover:shadow-[0_10px_36px_-8px_rgba(124,111,247,0.16),0_24px_56px_-24px_rgba(15,23,42,0.34)]"
+    >
+      {accent && (
+        <div
+          className="absolute left-0 top-0 h-full w-[3px] rounded-full opacity-70 transition-opacity duration-300 group-hover:opacity-100"
+          style={{ backgroundColor: accent }}
+        />
+      )}
       {badge ? (
-        <p className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-[#9aa0a8]">
-          {badge}
-        </p>
+        <p className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-white/[0.45]">{badge}</p>
       ) : null}
-      <h3 className="text-lg font-semibold tracking-tight text-[#111827]">{title}</h3>
-      <p className="mt-2 text-sm leading-7 text-[#5f6670]">{description}</p>
+      <h3 className="text-base font-semibold tracking-tight text-white md:text-lg">{title}</h3>
+      <p className="mt-2 text-sm leading-7 text-white/[0.78]">{description}</p>
     </article>
   )
 }
 
+const capabilityAccents = ["#7c6ff7", "#d97706", "#059669", "#dc2626", "#0891b2", "#be185d"]
+
+function FaqItem({ question, answer, isOpen, onToggle }: { question: string; answer: string; isOpen: boolean; onToggle: () => void }) {
+  const bodyRef = useRef<HTMLDivElement>(null)
+  return (
+    <div className="border-b border-[#0f172a]/8">
+      <button
+        type="button"
+        onClick={onToggle}
+        className="group/faq flex w-full items-center justify-between gap-6 py-6 text-left transition-colors"
+      >
+        <span className="text-[15px] font-medium text-[#0f172a] transition-colors duration-200 group-hover/faq:text-[#7c6ff7] md:text-base">{question}</span>
+        <span className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full border border-[#0f172a]/10 text-[#0f172a] transition-all duration-200 group-hover/faq:border-[#7c6ff7]/30 group-hover/faq:bg-[#7c6ff7]/5 group-hover/faq:text-[#7c6ff7]">
+          {isOpen ? (
+            <svg width="12" height="2" viewBox="0 0 12 2" fill="none"><rect width="12" height="2" rx="1" fill="currentColor"/></svg>
+          ) : (
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><rect x="5" width="2" height="12" rx="1" fill="currentColor"/><rect y="5" width="12" height="2" rx="1" fill="currentColor"/></svg>
+          )}
+        </span>
+      </button>
+      <div
+        ref={bodyRef}
+        className="overflow-hidden transition-all duration-300 ease-in-out"
+        style={{ maxHeight: isOpen ? (bodyRef.current?.scrollHeight ?? 400) : 0 }}
+      >
+        <p className="pb-6 text-sm leading-7 text-[#5f6670] md:text-[15px]">{answer}</p>
+      </div>
+    </div>
+  )
+}
+
+function FaqSection() {
+  const [openIndex, setOpenIndex] = useState<number | null>(0)
+  return (
+    <section className="relative w-full overflow-hidden px-6 pb-24 pt-16 md:px-10 md:pb-28 md:pt-20 lg:px-16" style={{ background: 'linear-gradient(180deg, #ece6f4 0%, #e4ddef 50%, #ddd5e8 100%)' }}>
+      {/* Subtle radial glow */}
+      <div className="pointer-events-none absolute right-0 top-0 h-[500px] w-[500px] rounded-full opacity-40" style={{ background: 'radial-gradient(circle, rgba(124,111,247,0.12) 0%, transparent 70%)' }} />
+      <div className="mx-auto max-w-5xl">
+        <h2 className="mb-10 font-playfair text-[2rem] font-semibold tracking-tight text-[#0f172a] md:text-[2.4rem]">
+          FAQs
+        </h2>
+        {landingContent.faqs.map((item, i) => (
+          <FaqItem
+            key={item.question}
+            question={item.question}
+            answer={item.answer}
+            isOpen={openIndex === i}
+            onToggle={() => setOpenIndex(openIndex === i ? null : i)}
+          />
+        ))}
+      </div>
+    </section>
+  )
+}
+
 export default function LandingPageClient() {
-  const router = useRouter()
   const { user, loading, signInWithGoogle } = useAuth()
   const [signingIn, setSigningIn] = useState(false)
   const [error, setError] = useState("")
 
   useEffect(() => {
     if (!loading && user) {
-      const search = typeof window !== "undefined" ? window.location.search : ""
-      router.push(`/dashboard${search}`)
+      const search = window.location.search
+      window.location.href = `/dashboard${search}`
     }
-  }, [loading, router, user])
+  }, [loading, user])
 
   const handleGoogleSignIn = async () => {
     setSigningIn(true)
@@ -51,8 +112,8 @@ export default function LandingPageClient() {
 
     try {
       await signInWithGoogle()
-      const search = typeof window !== "undefined" ? window.location.search : ""
-      router.push(`/dashboard${search}`)
+      const search = window.location.search
+      window.location.href = `/dashboard${search}`
     } catch (err: any) {
       if (err?.code !== "auth/popup-closed-by-user") {
         setError(err?.message || "Sign in failed")
@@ -69,7 +130,10 @@ export default function LandingPageClient() {
   return (
     <div className="min-h-screen bg-[#f6f4ef] text-[#111827]">
       <main>
-        <section className="relative flex min-h-screen w-full items-center overflow-hidden px-6 pb-10 pt-24 md:px-10 md:pb-14 md:pt-28 lg:px-16 lg:pb-16 lg:pt-32">
+
+        {/* ── Hero ──────────────────────────────────────────────────── */}
+        <section className="relative flex min-h-screen w-full items-center overflow-hidden px-6 pb-10 pt-24 md:px-10 md:pb-14 md:pt-28 lg:px-16 lg:pb-20 lg:pt-32">
+          {/* Grainient background */}
           <div className="absolute inset-0">
             <Grainient
               color1="#F8D9FF"
@@ -96,24 +160,28 @@ export default function LandingPageClient() {
               zoom={1}
             />
           </div>
-          <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(228,224,236,0.74)_0%,rgba(220,214,232,0.82)_100%)]" />
+
+          {/* Softer overlay so the gradient breathes */}
+          <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(220,213,234,0.62)_0%,rgba(210,203,226,0.70)_100%)]" />
+
+          {/* Nav */}
           <header className="absolute inset-x-0 top-0 z-20">
-            <div className="relative flex w-full items-center justify-between pl-6 pr-4 py-4 md:pl-10 md:pr-6 lg:pl-16 lg:pr-8">
+            <div className="relative flex w-full items-center justify-between px-6 py-5 md:px-10 lg:px-16">
               <Link href="/" className="text-xl font-semibold tracking-tight text-[#111827]">
                 SpeakOps
               </Link>
 
-              <div className="absolute left-1/2 hidden -translate-x-1/2 items-center gap-6 text-base text-[#1f2937] md:flex">
-                <button type="button" onClick={scrollToDemo} className="transition hover:text-[#111827]">
+              <nav className="absolute left-1/2 hidden -translate-x-1/2 items-center gap-7 text-[15px] text-[#1f2937] md:flex">
+                <button type="button" onClick={scrollToDemo} className="transition-colors hover:text-[#111827]">
                   Demo
                 </button>
-                <a href="#how-it-works" className="transition hover:text-[#111827]">
+                <Link href="/how-it-works" className="transition-colors hover:text-[#111827]">
                   How it works
-                </a>
-                <a href="#security" className="transition hover:text-[#111827]">
-                  Security
-                </a>
-              </div>
+                </Link>
+                <Link href="/book" className="transition-colors hover:text-[#111827]">
+                  Book a Call
+                </Link>
+              </nav>
 
               <Button
                 onClick={handleGoogleSignIn}
@@ -126,33 +194,37 @@ export default function LandingPageClient() {
               </Button>
             </div>
           </header>
+
+          {/* Hero content */}
           <div className="relative z-10 mx-auto flex w-full max-w-5xl flex-col items-center text-center">
-            <div className="inline-flex items-center rounded-full border border-black/8 bg-white px-3.5 py-1 text-xs font-medium text-[#6b7280] shadow-sm">
+            {/* Eyebrow */}
+            <div className="inline-flex items-center gap-2 rounded-full border border-black/8 bg-white/80 px-4 py-1.5 text-xs font-medium text-[#6b7280] shadow-[0_4px_16px_-8px_rgba(15,23,42,0.16)] backdrop-blur-sm">
+              <span className="inline-block h-1.5 w-1.5 rounded-full bg-[#7c6ff7]" />
               {landingContent.eyebrow}
             </div>
 
             <h1
               style={{
-                fontSize: "clamp(2rem, 5.4vw, 72px)",
-                fontWeight: 600,
-                fontStyle: "normal",
-                lineHeight: 1.15,
+                fontSize: "clamp(2.1rem, 5.6vw, 76px)",
+                fontWeight: 700,
+                lineHeight: 1.12,
+                letterSpacing: "-0.02em",
               }}
-              className="mt-5 mx-auto max-w-[20ch] text-balance font-playfair"
+              className="mt-6 mx-auto max-w-[22ch] text-balance font-playfair text-[#0f172a]"
             >
               {landingContent.hero.headline}
             </h1>
 
-            <p className="mt-5 max-w-2xl text-lg leading-8 text-[#6b7280] md:text-xl md:leading-9">
+            <p className="mt-5 max-w-xl text-lg leading-8 text-[#6b7280] md:text-xl md:leading-9">
               {landingContent.hero.subhead}
             </p>
 
-            <div className="mt-7 flex w-full flex-col gap-3 sm:w-auto sm:flex-row">
+            <div className="mt-8 flex w-full flex-col gap-3 sm:w-auto sm:flex-row">
               <Button
                 size="lg"
                 onClick={handleGoogleSignIn}
                 disabled={signingIn || loading}
-                className="h-11 w-full rounded-full bg-[#111827] px-6 text-sm text-white hover:bg-[#1f2937] sm:w-auto"
+                className="h-12 w-full rounded-full bg-[#0f172a] px-7 text-sm font-semibold text-white shadow-[0_8px_32px_-12px_rgba(15,23,42,0.52)] hover:bg-[#1e293b] sm:w-auto"
               >
                 <IconBrandGoogle className="size-4" />
                 {signingIn ? "Signing in..." : landingContent.hero.primaryCta}
@@ -160,124 +232,108 @@ export default function LandingPageClient() {
               <Button
                 size="lg"
                 variant="outline"
-                onClick={scrollToDemo}
-                className="h-11 w-full rounded-full border-black/10 bg-white px-6 text-sm text-[#111827] hover:bg-[#f3f4f6] sm:w-auto"
+                asChild
+                className="h-12 w-full rounded-full border-black/12 bg-white/80 px-7 text-sm font-medium text-[#111827] backdrop-blur-sm hover:bg-white hover:text-[#111827] sm:w-auto"
               >
-                {landingContent.hero.secondaryCta}
-                <ArrowRight className="size-4" />
+                <Link href="/book">
+                  Book a Call
+                  <Phone className="size-4" />
+                </Link>
               </Button>
             </div>
 
             {error ? <p className="mt-3 text-sm text-[#dc2626]">{error}</p> : null}
 
-            <div className="mt-8 flex flex-wrap items-center justify-center gap-x-8 gap-y-2 text-sm text-[#6b7280]">
+            {/* Proof metrics */}
+            <div className="mt-10 flex flex-wrap items-center justify-center gap-x-10 gap-y-3">
               {landingContent.proof.map((item) => (
-                <div key={item.label} className="flex items-center gap-1.5">
-                  <span className="font-semibold text-[#111827]">{item.value}</span>
-                  <span>{item.label}</span>
+                <div key={item.label} className="flex flex-col items-center gap-0.5">
+                  <span className="font-playfair text-2xl font-semibold text-[#0f172a]">{item.value}</span>
+                  <span className="text-xs text-[#8a9098]">{item.label}</span>
                 </div>
               ))}
             </div>
           </div>
-
         </section>
 
-        <section className="w-full bg-[#efe7db] px-6 pb-10 pt-16 md:px-10 md:pt-20 lg:px-16">
+        {/* ── Demo ─────────────────────────────────────────────────── */}
+        <section id="live-demo" className="w-full px-6 pb-14 pt-16 md:px-10 md:pt-20 lg:px-16" style={{ background: 'linear-gradient(180deg, #ece6f4 0%, #e4ddef 52%, #ddd5e8 100%)' }}>
           <PhoneDemoShowcase onJumpToSignup={handleGoogleSignIn} />
         </section>
 
-        <section className="w-full bg-[#fbfaf7] px-6 py-10 md:px-10 md:py-14 lg:px-16">
-          <div className="mx-auto max-w-3xl text-center">
-            <p className="text-sm font-semibold uppercase tracking-[0.18em] text-[#8a9098]">
+        {/* ── Capabilities ─────────────────────────────────────────── */}
+        <section className="relative w-full overflow-hidden px-6 py-14 md:px-10 md:py-20 lg:px-16" style={{ background: 'linear-gradient(180deg, #221b46 0%, #191336 48%, #140f2b 100%)' }}>
+          {/* Radial glow behind cards */}
+          <div className="pointer-events-none absolute left-1/2 top-1/3 -translate-x-1/2 -translate-y-1/2 h-[700px] w-[900px] rounded-full opacity-50" style={{ background: 'radial-gradient(ellipse, rgba(167,139,250,0.18) 0%, transparent 65%)' }} />
+
+          <div className="relative mx-auto max-w-3xl text-center">
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-white/40">
               Core capabilities
             </p>
-            <h2 className="mt-3 font-playfair text-2xl font-semibold tracking-tight text-[#111827] md:text-4xl">
-              What is happening during the call
+            <h2 className="mt-3 font-playfair text-3xl font-semibold tracking-tight text-white md:text-[2.6rem] md:leading-tight">
+              What happens during the call
             </h2>
-            <p className="mt-4 text-base leading-7 text-[#5f6670]">
-              The landing page should not rely on promises alone. The product behavior should already feel visible from the demo.
+            <p className="mt-4 text-base leading-7 text-white/[0.62]">
+              Every interaction is handled end-to-end — from context retrieval to action to summary.
             </p>
           </div>
 
-          <div className="mt-8 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-            {landingContent.capabilities.map((item) => (
-              <SectionCard key={item.title} title={item.title} description={item.description} />
+          <div className="relative mt-10 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+            {landingContent.capabilities.map((item, i) => (
+              <SectionCard
+                key={item.title}
+                title={item.title}
+                description={item.description}
+                accent={capabilityAccents[i % capabilityAccents.length]}
+              />
             ))}
           </div>
         </section>
 
-        <section id="how-it-works" className="w-full bg-[#efe7db] px-6 py-10 md:px-10 md:py-14 lg:px-16">
-          <div className="grid w-full gap-8 lg:grid-cols-[1fr_1fr] lg:gap-10">
-            <div className="flex flex-col items-start text-left">
-              <h2 className="font-playfair text-3xl font-semibold leading-tight tracking-tight text-[#111827] md:text-5xl lg:whitespace-nowrap">
-                Short setup, visible result
+        {/* ── Two-Phone Capabilities Demo ────────────────────────── */}
+        <section className="relative w-full overflow-hidden px-6 py-16 md:px-10 md:py-24 lg:px-16" style={{ background: 'linear-gradient(180deg, #ece6f4 0%, #e4ddef 50%, #ddd5e8 100%)' }}>
+          <div className="pointer-events-none absolute left-1/2 top-1/3 -translate-x-1/2 h-[600px] w-[800px] rounded-full opacity-30" style={{ background: 'radial-gradient(ellipse, rgba(124,111,247,0.15) 0%, transparent 65%)' }} />
+          <div className="relative mx-auto max-w-6xl">
+            <TwoPhoneCapabilitiesDemo />
+          </div>
+        </section>
+
+        {/* ── Security ─────────────────────── CARD GRID */}
+        <section id="security" className="relative w-full overflow-hidden px-6 py-16 md:px-10 md:py-24 lg:px-16" style={{ background: 'linear-gradient(180deg, #1a1535 0%, #110e24 50%, #0d0a1a 100%)' }}>
+          <div className="pointer-events-none absolute left-1/2 top-0 -translate-x-1/2 h-[600px] w-[800px] rounded-full opacity-30" style={{ background: 'radial-gradient(ellipse, rgba(124,111,247,0.20) 0%, transparent 65%)' }} />
+          <div className="pointer-events-none absolute -right-40 bottom-0 h-[400px] w-[400px] rounded-full opacity-20" style={{ background: 'radial-gradient(circle, rgba(52,211,153,0.15) 0%, transparent 70%)' }} />
+
+          <div className="relative mx-auto max-w-5xl">
+            <div className="mb-14 text-center">
+              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-white/30">
+                Security and control
+              </p>
+              <h2 className="mt-3 font-playfair text-3xl font-semibold tracking-tight text-white md:text-[2.6rem] md:leading-tight">
+                Your agent does exactly<br className="hidden md:block" /> what you{" "}
+                <em className="italic text-[#a78bfa]">allow.</em>
               </h2>
-              <p className="mt-6 max-w-[34rem] text-base leading-8 text-[#5f6670] md:text-[1.45rem] md:leading-[1.5]">
-                The flow from sign-in to live support stays deliberately short, so the demo feels like the product itself rather than a concept.
+              <p className="mx-auto mt-4 max-w-lg text-base leading-7 text-white/50">
+                Permissions, escalation, and transparent execution are built into every call — not hidden behind settings.
               </p>
             </div>
 
-            <div className="border-y border-black/10">
-              {landingContent.steps.map((item, index) => (
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              {landingContent.security.map((item) => (
                 <div
-                  key={item.step}
-                  className="grid grid-cols-[48px_1fr] gap-4 border-b border-black/10 py-4 last:border-b-0 md:grid-cols-[58px_1fr] md:gap-5 md:py-5"
+                  key={item.title}
+                  className="group rounded-[22px] border border-white/8 bg-white/[0.03] p-7 backdrop-blur-sm transition-all duration-300 hover:border-white/16 hover:bg-white/[0.06]"
                 >
-                  <span className="font-playfair text-4xl leading-none text-black/15 md:text-5xl">
-                    {String(index + 1).padStart(2, "0")}
-                  </span>
-                  <p className="pt-1 text-base leading-7 text-[#1f2937] md:text-[1.15rem] md:leading-[1.45]">
-                    {item.description}
-                  </p>
+                  <h3 className="text-lg font-semibold text-white">{item.title}</h3>
+                  <p className="mt-2.5 text-sm leading-7 text-white/50">{item.description}</p>
                 </div>
               ))}
             </div>
           </div>
         </section>
 
-        <section id="security" className="w-full bg-[#fbfaf7] px-6 py-10 md:px-10 md:py-14 lg:px-16">
-          <div className="grid gap-8 lg:grid-cols-[0.95fr_1.05fr]">
-            <div>
-              <p className="text-sm font-semibold uppercase tracking-[0.18em] text-[#8a9098]">
-                Security and control
-              </p>
-              <h2 className="mt-3 font-playfair text-2xl font-semibold tracking-tight text-[#111827] md:text-4xl">
-                Trust comes from visible constraints
-              </h2>
-              <p className="mt-4 text-base leading-7 text-[#5f6670]">
-                A believable operator is still a bounded one. Permissions, escalation, and clear execution are part of the product, not hidden details.
-              </p>
-            </div>
+        {/* ── FAQ ─────────────────────────────────────────────────────── */}
+        <FaqSection />
 
-            <div className="grid gap-4">
-              {landingContent.security.map((item) => (
-                <SectionCard key={item.title} title={item.title} description={item.description} />
-              ))}
-            </div>
-          </div>
-        </section>
-
-        <section className="w-full bg-[#efe7db] px-6 pb-24 pt-10 md:px-10 lg:px-16">
-          <div className="grid gap-8 md:grid-cols-[0.9fr_1.1fr]">
-            <div>
-              <p className="text-sm font-semibold uppercase tracking-[0.18em] text-[#8a9098]">
-                FAQ
-              </p>
-              <h2 className="mt-3 font-playfair text-2xl font-semibold tracking-tight text-[#111827] md:text-4xl">
-                Practical questions before going live
-              </h2>
-              <p className="mt-4 text-base leading-7 text-[#5f6670]">
-                The demo should do most of the explaining. These are the short answers that remain.
-              </p>
-            </div>
-
-            <div className="space-y-4">
-              {landingContent.faqs.map((item) => (
-                <SectionCard key={item.question} title={item.question} description={item.answer} />
-              ))}
-            </div>
-          </div>
-        </section>
       </main>
 
       <MarketingFooter />

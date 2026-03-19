@@ -8,6 +8,7 @@ import {
   Grid2x2,
   Mic,
   MicOff,
+  Pause,
   PhoneOff,
   Play,
   Plus,
@@ -214,6 +215,7 @@ export default function PhoneDemoShowcase({ onJumpToSignup }: PhoneDemoShowcaseP
   const [currentAction, setCurrentAction] = useState("")
   const [activeSpeaker, setActiveSpeaker] = useState<"agent" | "customer" | null>(null)
   const [replayToken, setReplayToken] = useState(0)
+  const [isPaused, setIsPaused] = useState(false)
 
   const runIdRef = useRef(0)
   const timerRef = useRef<number | null>(null)
@@ -224,10 +226,12 @@ export default function PhoneDemoShowcase({ onJumpToSignup }: PhoneDemoShowcaseP
   const sectionRef = useRef<HTMLDivElement | null>(null)
   const phonesRef = useRef<HTMLDivElement | null>(null)
   const isDemoVisibleRef = useRef(false)
+  const isPausedRef = useRef(false)
   const hasEnteredViewportRef = useRef(false)
   const playbackStateRef = useRef<"idle" | "running" | "complete">("idle")
 
   const scenario = landingContent.demo.scenarios[scenarioKey] as DemoScenario
+  const isConnected = callLabel === "Connected"
 
   const clearIdleReplayTimer = () => {
     if (idleReplayTimerRef.current !== null) {
@@ -239,6 +243,10 @@ export default function PhoneDemoShowcase({ onJumpToSignup }: PhoneDemoShowcaseP
   useEffect(() => {
     wordsPerSecondRef.current = wordsPerSecond
   }, [wordsPerSecond])
+
+  useEffect(() => {
+    isPausedRef.current = isPaused
+  }, [isPaused])
 
   useEffect(() => {
     const container = captionsScrollRef.current
@@ -317,6 +325,7 @@ export default function PhoneDemoShowcase({ onJumpToSignup }: PhoneDemoShowcaseP
       setCallTimer("00:00")
       setCurrentAction("")
       setActiveSpeaker(null)
+      setIsPaused(false)
       playbackStateRef.current = "idle"
     }
 
@@ -328,7 +337,7 @@ export default function PhoneDemoShowcase({ onJumpToSignup }: PhoneDemoShowcaseP
           stopTimer()
           return
         }
-        if (!isDemoVisibleRef.current) {
+        if (!isDemoVisibleRef.current || isPausedRef.current) {
           return
         }
         seconds += 1
@@ -344,7 +353,7 @@ export default function PhoneDemoShowcase({ onJumpToSignup }: PhoneDemoShowcaseP
           throw new Error("demo-aborted")
         }
 
-        if (!isDemoVisibleRef.current) {
+        if (!isDemoVisibleRef.current || isPausedRef.current) {
           await wait(140)
           continue
         }
@@ -494,10 +503,10 @@ export default function PhoneDemoShowcase({ onJumpToSignup }: PhoneDemoShowcaseP
             <Play className="size-3.5 text-[#111827]" />
             Live demo
           </div>
-          <h2 className="text-2xl font-semibold tracking-tight text-[#111827] md:text-3xl">
+          <h2 className="text-2xl font-semibold tracking-tight text-[#0f172a] md:text-3xl">
             {scenario.business}
           </h2>
-          <p className="mt-2 max-w-2xl text-sm leading-7 text-[#6b7280] md:text-base">
+          <p className="mt-2 max-w-2xl text-sm leading-7 text-[#5f6670] md:text-base">
             {scenario.summary}
           </p>
         </div>
@@ -517,8 +526,8 @@ export default function PhoneDemoShowcase({ onJumpToSignup }: PhoneDemoShowcaseP
                 className={cn(
                   "rounded-full px-4 py-2 text-sm font-medium transition",
                   scenarioKey === key
-                    ? "bg-[#111827] text-white"
-                    : "bg-white text-[#4b5563] shadow-[0_8px_24px_-20px_rgba(15,23,42,0.22)] hover:text-[#111827]"
+                    ? "bg-white text-[#111827] shadow-[0_8px_24px_-20px_rgba(15,23,42,0.22)]"
+                    : "bg-white/70 text-[#5f6670] hover:bg-white hover:text-[#111827]"
                 )}
               >
                 {item.label}
@@ -533,7 +542,7 @@ export default function PhoneDemoShowcase({ onJumpToSignup }: PhoneDemoShowcaseP
         >
           <div className="flex flex-wrap items-start justify-center gap-10 lg:justify-start lg:gap-8">
             <div className="flex flex-col items-center gap-3">
-              <span className="text-xs font-semibold uppercase tracking-[0.18em] text-[#8f8f8f]">
+              <span className="text-xs font-semibold uppercase tracking-[0.18em] text-[#5b6170]">
                 Customer Call
               </span>
               <PhoneShell indicatorClassName="bg-white/95">
@@ -545,12 +554,23 @@ export default function PhoneDemoShowcase({ onJumpToSignup }: PhoneDemoShowcaseP
 
                   <div className="mt-10 flex-1">
                     <div className="text-center">
-                      <p className="text-[15px] font-semibold text-white/62">
-                        {callLabel === "Connected" ? callTimer : callLabel}
-                      </p>
-                      <h3 className="mt-3 text-[31px] font-semibold tracking-tight text-white">
-                        {landingContent.demo.supportPhoneNumber}
+                      <div className="flex items-center justify-center gap-2">
+                        {isConnected && (
+                          <span className="flex items-center gap-1 rounded-full bg-[#ff3b30]/20 px-2 py-0.5 text-[11px] font-semibold text-[#ff6b6b]">
+                            <span className="h-1.5 w-1.5 rounded-full bg-[#ff3b30] animate-pulse" />
+                            REC
+                          </span>
+                        )}
+                        <p className="text-[15px] font-semibold text-white/70">
+                          {isConnected ? callTimer : callLabel}
+                        </p>
+                      </div>
+                      <h3 className="mt-3 text-[24px] font-semibold tracking-tight text-white">
+                        {scenario.business}
                       </h3>
+                      <p className="mt-1 text-[13px] text-white/50">
+                        {landingContent.demo.supportPhoneNumber}
+                      </p>
                     </div>
                   </div>
 
@@ -569,7 +589,7 @@ export default function PhoneDemoShowcase({ onJumpToSignup }: PhoneDemoShowcaseP
             </div>
 
             <div className="flex flex-col items-center gap-3">
-              <span className="text-xs font-semibold uppercase tracking-[0.18em] text-[#8f8f8f]">
+              <span className="text-xs font-semibold uppercase tracking-[0.18em] text-[#5b6170]">
                 Owner iMessage
               </span>
               <PhoneShell indicatorClassName="bg-black/90">
@@ -746,7 +766,7 @@ export default function PhoneDemoShowcase({ onJumpToSignup }: PhoneDemoShowcaseP
             <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
               <select
                 aria-label="Demo speed"
-                className="rounded-full bg-white px-4 py-2 text-sm text-[#4b5563] shadow-[0_8px_24px_-20px_rgba(15,23,42,0.22)] outline-none"
+                className="rounded-full border border-black/10 bg-white/90 px-4 py-2 text-sm text-[#111827] outline-none"
                 value={String(wordsPerSecond)}
                 onChange={(event) => {
                   clearIdleReplayTimer()
@@ -762,11 +782,20 @@ export default function PhoneDemoShowcase({ onJumpToSignup }: PhoneDemoShowcaseP
 
               <button
                 type="button"
+                onClick={() => setIsPaused((p) => !p)}
+                className="inline-flex items-center gap-2 rounded-full border border-black/10 bg-white/90 px-4 py-2 text-sm font-medium text-[#111827] transition hover:bg-white hover:text-[#111827]"
+              >
+                {isPaused ? <Play className="size-4" /> : <Pause className="size-4" />}
+                {isPaused ? "Resume" : "Pause"}
+              </button>
+
+              <button
+                type="button"
                 onClick={() => {
                   clearIdleReplayTimer()
                   setReplayToken((value) => value + 1)
                 }}
-                className="inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 text-sm font-medium text-[#4b5563] shadow-[0_8px_24px_-20px_rgba(15,23,42,0.22)] transition hover:text-[#111827]"
+                className="inline-flex items-center gap-2 rounded-full border border-black/10 bg-white/90 px-4 py-2 text-sm font-medium text-[#111827] transition hover:bg-white hover:text-[#111827]"
               >
                 <RotateCcw className="size-4" />
                 Replay
