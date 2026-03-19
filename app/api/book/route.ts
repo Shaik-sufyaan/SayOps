@@ -1,8 +1,7 @@
-import { Resend } from "resend"
 import { NextResponse } from "next/server"
-import { sql } from "@/lib/marketing-db"
+import { getMarketingDb } from "@/lib/marketing-db"
+import { getMarketingMailer } from "@/lib/marketing-email"
 
-const resend = new Resend(process.env.RESEND_API_KEY)
 const NOTIFY = ["sufyaan1517@gmail.com", "varun@0lumens.com", "shwejan@0lumens.com"]
 
 function buildCalendarUrl(name: string, email: string, date: string, time: string) {
@@ -110,6 +109,9 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Missing fields" }, { status: 400 })
   }
   try {
+    const sql = getMarketingDb()
+    const resend = getMarketingMailer()
+
     await sql`
       INSERT INTO demo_bookings (name, email, booking_date, booking_time)
       VALUES (${name}, ${email}, ${date}, ${time})
