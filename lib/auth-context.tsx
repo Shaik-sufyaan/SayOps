@@ -9,7 +9,7 @@ import {
   type User as FirebaseUser,
 } from "firebase/auth"
 import { auth } from "@/lib/firebase"
-import { fetchCurrentUser, fetchTermsStatus, acceptTerms } from "@/lib/api-client"
+import { fetchCurrentUser, fetchTermsStatus, acceptCurrentTerms } from "@/lib/api-client"
 import { useOrgStore } from "@/stores/orgStore"
 
 const googleProvider = new GoogleAuthProvider()
@@ -19,6 +19,7 @@ interface AuthContextType {
   loading: boolean
   isPlatformAdmin: boolean
   termsAccepted: boolean | null  // null = still loading
+  termsVersion: string | null
   signInWithGoogle: () => Promise<FirebaseUser>
   signOut: () => Promise<void>
   getToken: () => Promise<string | null>
@@ -33,6 +34,43 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true)
   const [isPlatformAdmin, setIsPlatformAdmin] = useState(false)
   const [termsAccepted, setTermsAccepted] = useState<boolean | null>(null)
+  const [termsVersion, setTermsVersion] = useState<string | null>(null)
+
+  const syncCurrentUser = async (currentUser: FirebaseUser | null) => {
+    const orgStore = useOrgStore.getState()
+
+    if (!currentUser) {
+      setIsPlatformAdmin(false)
+      setTermsAccepted(null)
+      setTermsVersion(null)
+      orgStore.clear()
+      return
+    }
+
+    try {
+      const hasPendingInviteToken = typeof window !== "undefined"
+        && Boolean(sessionStorage.getItem("pendingInviteToken"))
+
+      if (hasPendingInviteToken) {
+        orgStore.clear()
+        const termsStatus = await fetchTermsStatus()
+        setIsPlatformAdmin(false)
+        setTermsAccepted(termsStatus.accepted)
+        setTermsVersion(termsStatus.terms_version ?? null)
+        return
+      }
+
+      const { user: member, terms, allMemberships } = await fetchCurrentUser()
+      setIsPlatformAdmin(member?.is_platform_admin === true)
+      setTermsAccepted(terms?.accepted !== false)
+      setTermsVersion(terms?.terms_version ?? null)
+      orgStore.setAllMemberships(allMemberships ?? [])
+    } catch {
+      setIsPlatformAdmin(false)
+      setTermsAccepted(false)
+      setTermsVersion(null)
+    }
+  }
 
   useEffect(() => {
     // Dev auth bypass must be explicitly enabled; public routes should stay public by default.
@@ -52,35 +90,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const unsubscribe = onAuthStateChanged(auth, async (u) => {
       setUser(u)
-      const orgStore = useOrgStore.getState()
-      if (u) {
-        try {
-          const hasPendingInviteToken = typeof window !== "undefined"
-            && Boolean(sessionStorage.getItem("pendingInviteToken"))
-
-          if (hasPendingInviteToken) {
-            orgStore.clear()
-            const termsStatus = await fetchTermsStatus()
-            setIsPlatformAdmin(false)
-            setTermsAccepted(termsStatus.accepted)
-          } else {
-            const [currentUserData, termsStatus] = await Promise.all([
-              fetchCurrentUser(),
-              fetchTermsStatus(),
-            ])
-            setIsPlatformAdmin(currentUserData.user?.is_platform_admin === true)
-            setTermsAccepted(termsStatus.accepted)
-            orgStore.setAllMemberships(currentUserData.allMemberships ?? [])
-          }
-        } catch {
-          setIsPlatformAdmin(false)
-          setTermsAccepted(false)
-        }
-      } else {
-        setIsPlatformAdmin(false)
-        setTermsAccepted(null)
-        orgStore.clear()
-      }
+      await syncCurrentUser(u)
       setLoading(false)
     })
     return unsubscribe
@@ -107,12 +117,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       await user.reload()
       // Create shallow copy to trigger re-render if needed, though user object is mutable
       setUser({ ...user } as FirebaseUser)
+      await syncCurrentUser(user)
+      return
     }
+
+    await syncCurrentUser(null)
   }
 
   const acceptTermsAndConditions = async () => {
-    await acceptTerms()
+    const terms = await acceptCurrentTerms()
     setTermsAccepted(true)
+    setTermsVersion(terms.terms_version ?? null)
   }
 
   return (
@@ -122,6 +137,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         loading,
         isPlatformAdmin,
         termsAccepted,
+        termsVersion,
         signInWithGoogle,
         signOut: signOutFn,
         getToken,

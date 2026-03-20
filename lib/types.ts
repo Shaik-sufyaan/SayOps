@@ -50,13 +50,15 @@ export interface OrgMembership {
   } | null
 }
 
+export interface TermsAcceptanceInfo {
+  accepted: boolean
+  terms_version: string
+}
+
 export interface CurrentUserResponse {
   user: OrgMember
   organization?: Organization | null
-  terms?: {
-    accepted: boolean
-    terms_version: string
-  }
+  terms: TermsAcceptanceInfo
   allMemberships: OrgMembership[]
 }
 

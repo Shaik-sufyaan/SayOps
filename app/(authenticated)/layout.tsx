@@ -1,25 +1,7 @@
-import { Suspense } from "react"
-import { AppSidebar } from "@/components/app-sidebar"
-import { SidebarProvider } from "@/components/ui/sidebar"
-import { PanelContainer } from "@/components/panels/PanelContainer"
-import { PersistentEva } from "@/components/eva/PersistentEva"
+import { AuthenticatedAppShell } from "@/components/auth/AuthenticatedAppShell"
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
-    <SidebarProvider>
-      <div className="flex h-screen w-full overflow-hidden">
-        <Suspense fallback={null}>
-          <AppSidebar />
-        </Suspense>
-        <main className="flex min-h-0 flex-1 flex-col">
-          <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-4 pt-14 lg:pt-4">
-            {children}
-            <Suspense fallback={null}>
-              <PersistentEva />
-            </Suspense>
-          </div>
-        </main>
-      </div>
-    </SidebarProvider>
+    <AuthenticatedAppShell>{children}</AuthenticatedAppShell>
   )
 }

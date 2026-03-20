@@ -302,7 +302,6 @@ function hydrateApiMessages<T extends {
     }
   }) as T[]
 }
-
 // ---- User & Org ----
 
 export async function fetchCurrentUser(): Promise<CurrentUserResponse> {
@@ -314,6 +313,20 @@ export async function fetchCurrentUser(): Promise<CurrentUserResponse> {
 export async function fetchUser(): Promise<OrgMember> {
   const res = await apiFetchWithoutOrg<CurrentUserResponse>("/user/me")
   return res.user
+}
+
+export async function fetchTermsStatus(): Promise<{ accepted: boolean; terms_version: string }> {
+  return apiFetchWithoutOrg<{ accepted: boolean; terms_version: string }>("/terms/status")
+}
+
+export async function acceptCurrentTerms(): Promise<{ accepted: boolean; terms_version: string }> {
+  return apiFetchWithoutOrg<{ accepted: boolean; terms_version: string }>("/terms/accept", {
+    method: "POST",
+  })
+}
+
+export async function acceptTerms(): Promise<{ accepted: boolean; terms_version: string }> {
+  return acceptCurrentTerms()
 }
 
 export async function updateCurrentUserPhone(phoneNumber: string): Promise<OrgMember> {
@@ -360,7 +373,6 @@ export async function fetchAgents(): Promise<Agent[]> {
   const res = await apiFetch<{ agents: Agent[]; count: number }>("/agents")
   return res.agents
 }
-
 export async function fetchAgent(id: string): Promise<Agent> {
   return apiFetch<Agent>(`/agents/${id}`)
 }
@@ -1298,16 +1310,4 @@ export async function runCustomerAction(customerId: string, payload: CustomerAct
     body: JSON.stringify(payload),
   })
   return res.ownerState
-}
-
-// ---- Terms & Conditions ----
-
-export async function fetchTermsStatus(): Promise<{ accepted: boolean; terms_version: string }> {
-  return apiFetch<{ accepted: boolean; terms_version: string }>('/terms/status')
-}
-
-export async function acceptTerms(): Promise<{ accepted: boolean; terms_version: string }> {
-  return apiFetch<{ accepted: boolean; terms_version: string }>('/terms/accept', {
-    method: 'POST',
-  })
 }
