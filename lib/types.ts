@@ -118,6 +118,7 @@ export interface Agent {
   capabilities: string[]
   platforms?: string[]
   model: string
+  voice_model?: string | null
   max_steps: number
   max_call_time?: number
   max_tokens: number | null
@@ -553,6 +554,10 @@ export interface LlmTraceDebugRecord {
   cachedPromptTokens: number | null
   providerCacheName: string | null
   promptCacheRetention: string | null
+  phaseTimingsJson: Record<string, unknown> | null
+  eventLoopDelayP95Ms: number | null
+  eventLoopDelayMaxMs: number | null
+  eventLoopUtilization: number | null
   parsedText: string | null
   parsedToolCalls: unknown
   requestPayload: unknown

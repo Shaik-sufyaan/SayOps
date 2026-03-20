@@ -20,6 +20,10 @@ function formatCount(value: number | null): string {
   return value == null ? "n/a" : String(value)
 }
 
+function formatMetric(value: number | null, suffix = ""): string {
+  return value == null ? "n/a" : `${value}${suffix}`
+}
+
 function getTraceBadgeVariant(status: string): "secondary" | "destructive" {
   return status === "success" || status === "retried_success" ? "secondary" : "destructive"
 }
@@ -183,7 +187,28 @@ export function LlmTraceInspector({
                   </div>
                 </div>
 
-                <div className="rounded-2xl bg-muted/30 p-4 xl:col-span-3">
+                <div className="rounded-2xl bg-muted/30 p-4">
+                  <div className="text-xs uppercase tracking-[0.22em] text-muted-foreground">Prompt Cache</div>
+                  <div className="mt-3 space-y-1 text-sm">
+                    <div>mode: {selectedTrace.cacheMode ?? "n/a"}</div>
+                    <div>cached tokens: {formatCount(selectedTrace.cachedPromptTokens)}</div>
+                    <div>retention: {selectedTrace.promptCacheRetention ?? "n/a"}</div>
+                    <div className="break-all text-xs text-muted-foreground">
+                      key: {selectedTrace.cacheKey ?? "n/a"}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="rounded-2xl bg-muted/30 p-4">
+                  <div className="text-xs uppercase tracking-[0.22em] text-muted-foreground">Event Loop</div>
+                  <div className="mt-3 space-y-1 text-sm">
+                    <div>p95 delay: {formatMetric(selectedTrace.eventLoopDelayP95Ms, " ms")}</div>
+                    <div>max delay: {formatMetric(selectedTrace.eventLoopDelayMaxMs, " ms")}</div>
+                    <div>utilization: {formatMetric(selectedTrace.eventLoopUtilization)}</div>
+                  </div>
+                </div>
+
+                <div className="rounded-2xl bg-muted/30 p-4 xl:col-span-4">
                   <div className="text-xs uppercase tracking-[0.22em] text-muted-foreground">Parsed Result</div>
                   <div className="mt-3 grid gap-3 lg:grid-cols-2">
                     <div className="rounded-xl border bg-background p-3">
@@ -215,6 +240,21 @@ export function LlmTraceInspector({
                   </div>
                 </div>
               </div>
+
+              {selectedTrace.phaseTimingsJson ? (
+                <div className="rounded-2xl bg-muted/30 p-4">
+                  <div className="text-xs uppercase tracking-[0.22em] text-muted-foreground">Phase Timings</div>
+                  <div className="mt-3 rounded-xl border bg-background">
+                    <JsonTreePanel
+                      title="Phase Timings"
+                      value={selectedTrace.phaseTimingsJson}
+                      wrapText={wrapText}
+                      defaultOpenMatcher={defaultRootOpenMatcher}
+                      className="rounded-xl border-0 shadow-none"
+                    />
+                  </div>
+                </div>
+              ) : null}
             </div>
           ) : (
             <div className="rounded-2xl border border-dashed bg-muted/30 p-6 text-sm text-muted-foreground">
