@@ -238,6 +238,11 @@ export interface AdminConversationMessage extends Message {
   traceExecutionId: string | null
 }
 
+export interface AdminConversationMessagesResponse {
+  messages: AdminConversationMessage[]
+  llmTraceMode: string | null
+}
+
 export interface ConversationTurn {
   speaker: "User" | "Assistant" | string
   text: string
@@ -531,6 +536,7 @@ export interface LlmTraceDebugRecord {
   id: string
   provider: string
   modelId: string
+  operation: string | null
   status: 'success' | 'empty_completion' | 'error' | 'retried_success' | 'retried_failure'
   attempt: number
   startedAt: string
@@ -540,6 +546,11 @@ export interface LlmTraceDebugRecord {
   completionTokens: number | null
   totalTokens: number | null
   thoughtsTokenCount: number | null
+  cacheMode: string | null
+  cacheKey: string | null
+  cachedPromptTokens: number | null
+  providerCacheName: string | null
+  promptCacheRetention: string | null
   parsedText: string | null
   parsedToolCalls: unknown
   requestPayload: unknown
@@ -547,7 +558,7 @@ export interface LlmTraceDebugRecord {
 }
 
 export interface LlmTraceDebugSession {
-  sessionId: string
+  sessionId: string | null
   conversationId: string | null
   executionId: string | null
   traces: LlmTraceDebugRecord[]

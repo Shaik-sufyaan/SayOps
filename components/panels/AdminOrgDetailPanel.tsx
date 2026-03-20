@@ -277,6 +277,7 @@ export function AdminOrgDetailPanel({ orgId }: AdminOrgDetailPanelProps) {
   const [messages, setMessages] = React.useState<AdminConversationMessage[]>([])
   const [messagesLoading, setMessagesLoading] = React.useState(false)
   const [messagesError, setMessagesError] = React.useState<string | null>(null)
+  const [llmTraceMode, setLlmTraceMode] = React.useState<string | null>(null)
   const [selectedTraceMessageId, setSelectedTraceMessageId] = React.useState<string | null>(null)
   const [selectedTraceExecutionId, setSelectedTraceExecutionId] = React.useState<string | null>(null)
 
@@ -363,6 +364,7 @@ export function AdminOrgDetailPanel({ orgId }: AdminOrgDetailPanelProps) {
     setSelectedConversationId(null)
     setMessages([])
     setMessagesError(null)
+    setLlmTraceMode(null)
     setSelectedTraceMessageId(null)
     setSelectedTraceExecutionId(null)
     setTraceSession(null)
@@ -378,6 +380,7 @@ export function AdminOrgDetailPanel({ orgId }: AdminOrgDetailPanelProps) {
       setMessages([])
       setMessagesError(null)
       setMessagesLoading(false)
+      setLlmTraceMode(null)
       setSelectedTraceMessageId(null)
       setSelectedTraceExecutionId(null)
       setTraceSession(null)
@@ -389,6 +392,7 @@ export function AdminOrgDetailPanel({ orgId }: AdminOrgDetailPanelProps) {
     let cancelled = false
     setMessagesLoading(true)
     setMessagesError(null)
+    setLlmTraceMode(null)
     setSelectedTraceMessageId(null)
     setSelectedTraceExecutionId(null)
     setTraceSession(null)
@@ -399,8 +403,9 @@ export function AdminOrgDetailPanel({ orgId }: AdminOrgDetailPanelProps) {
     void fetchAdminConversationMessages(orgId, selectedConversationId)
       .then((result) => {
         if (cancelled) return
-        setMessages(result)
-        const defaultTraceMessage = pickDefaultTraceMessage(result)
+        setMessages(result.messages)
+        setLlmTraceMode(result.llmTraceMode)
+        const defaultTraceMessage = pickDefaultTraceMessage(result.messages)
         setSelectedTraceMessageId(defaultTraceMessage?.id ?? null)
         setSelectedTraceExecutionId(defaultTraceMessage?.traceExecutionId ?? null)
       })
@@ -408,6 +413,7 @@ export function AdminOrgDetailPanel({ orgId }: AdminOrgDetailPanelProps) {
         if (cancelled) return
         setMessages([])
         setMessagesError(err?.message || "Failed to load conversation messages")
+        setLlmTraceMode(null)
       })
       .finally(() => {
         if (!cancelled) {
@@ -480,6 +486,7 @@ export function AdminOrgDetailPanel({ orgId }: AdminOrgDetailPanelProps) {
     () => conversations.find((conversation) => conversation.id === selectedConversationId) ?? null,
     [conversations, selectedConversationId]
   )
+  const traceCaptureDisabled = llmTraceMode !== "all"
 
   const agentOptions = React.useMemo(() => {
     const byId = new Map<string, { id: string; name: string }>()
@@ -693,6 +700,11 @@ export function AdminOrgDetailPanel({ orgId }: AdminOrgDetailPanelProps) {
             <div className="flex flex-wrap items-center gap-2">
               <Badge variant="outline">{formatChannelLabel(selectedConversation.channel)}</Badge>
               <Badge variant="outline">{selectedConversation.status}</Badge>
+              {llmTraceMode ? (
+                <Badge variant={traceCaptureDisabled ? "secondary" : "outline"}>
+                  LLM tracing {traceCaptureDisabled ? "off" : "on"}
+                </Badge>
+              ) : null}
             </div>
           ) : null}
         </div>
@@ -722,6 +734,9 @@ export function AdminOrgDetailPanel({ orgId }: AdminOrgDetailPanelProps) {
             const traceable = message.role === "assistant" && message.hasLlmTrace && !!message.traceExecutionId
             const missingTrace = message.role === "assistant" && !traceable
             const isSelected = traceable && message.id === selectedTraceMessageId
+            const missingTraceLabel = traceCaptureDisabled
+              ? "Tracing disabled in backend"
+              : "No raw trace persisted"
             return (
               <div
                 key={message.id}
@@ -755,7 +770,7 @@ export function AdminOrgDetailPanel({ orgId }: AdminOrgDetailPanelProps) {
                       Inspectable
                     </Badge>
                   ) : null}
-                  {missingTrace ? <Badge variant="secondary">No raw trace captured</Badge> : null}
+                  {missingTrace ? <Badge variant="secondary">{missingTraceLabel}</Badge> : null}
                 </div>
               </div>
             )
@@ -794,7 +809,11 @@ export function AdminOrgDetailPanel({ orgId }: AdminOrgDetailPanelProps) {
           refreshDisabled={!selectedTraceExecutionId}
           className="flex-1"
           emptyTitle="No raw trace loaded"
-          emptyDescription="Choose an inspectable assistant message from the transcript to view the exact model payloads. Older turns without persisted provider traces will show as unavailable."
+          emptyDescription={
+            traceCaptureDisabled
+              ? "Raw LLM tracing is currently disabled in the backend for this deployment, so these turns will not have provider payloads to inspect."
+              : "Choose an inspectable assistant message from the transcript to view the exact model payloads. Older turns without persisted provider traces will show as unavailable."
+          }
         />
       </div>
     </div>

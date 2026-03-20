@@ -27,6 +27,7 @@ import type {
   AdminAgent,
   AdminConversationSummary,
   AdminConversationMessage,
+  AdminConversationMessagesResponse,
   ExistingNumberAssignmentRequest,
   EvaNumberBinding,
   CustomerDashboardResponse,
@@ -1183,11 +1184,14 @@ export async function fetchAdminOrgConversations(
 export async function fetchAdminConversationMessages(
   orgId: string,
   conversationId: string
-): Promise<AdminConversationMessage[]> {
-  const res = await apiFetch<{ messages: AdminConversationMessage[] }>(
+): Promise<AdminConversationMessagesResponse> {
+  const res = await apiFetch<AdminConversationMessagesResponse>(
     `/admin/conversations/${encodeURIComponent(conversationId)}/messages?orgId=${encodeURIComponent(orgId)}`
   )
-  return hydrateApiMessages(res.messages ?? []) as AdminConversationMessage[]
+  return {
+    messages: hydrateApiMessages(res.messages ?? []) as AdminConversationMessage[],
+    llmTraceMode: typeof res.llmTraceMode === "string" ? res.llmTraceMode : null,
+  }
 }
 
 export async function fetchAdminExecutionLlmTraces(

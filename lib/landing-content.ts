@@ -104,16 +104,17 @@ export const landingContent = {
   brand: "SpeakOps",
   eyebrow: "AI customer support that acts like an operator, not a script",
   hero: {
-    headline: "Your AI Call Agent for Recovering Lost Revenue",
+    headline: "Your AI Call Agent",
     subhead:
-      "Upload your context, connect your tools, get a dedicated number. Go live in minutes — we recover customers while you focus on work.",
+      "Upload your business context, connect your tools, get a dedicated number, and see your agent go live. We recover customers while you focus on work.",
     primaryCta: "Continue with Google",
     secondaryCta: "Jump to live demo",
-    microCopy: "Go live in minutes. One business number. Real actions. Real summaries.",
+    microCopy: "Go live in minutes. One business number. Real actions. Satisfies real customers.",
   },
   proof: [
-    { value: "5 min", label: "typical setup" },
-    { value: "24/7", label: "answer coverage" },
+    { value: "5-6 min", label: "agent creation time" },
+    { value: "24/7", label: "uptime" },
+    { value: "100+", label: "tools in your agents' hands" },
     { value: "30+", label: "supported languages" },
   ] satisfies LandingMetric[],
   benefitColumns: [
