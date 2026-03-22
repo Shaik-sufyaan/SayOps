@@ -2,7 +2,6 @@
 
 import Link from "next/link"
 import { useState, type FormEvent } from "react"
-import { Phone } from "lucide-react"
 
 export default function MarketingFooter() {
   const [name, setName] = useState("")
@@ -48,6 +47,7 @@ export default function MarketingFooter() {
             <Link href="/about" className="transition hover:text-white">About</Link>
             <Link href="/careers" className="transition hover:text-white">Careers</Link>
             <Link href="/press" className="transition hover:text-white">Press</Link>
+            <Link href="/book" className="transition hover:text-white">Book a Call</Link>
           </nav>
         </div>
 
@@ -97,15 +97,6 @@ export default function MarketingFooter() {
             </form>
           )}
 
-          <div className="mt-4 flex items-center gap-2">
-            <Link
-              href="/book"
-              className="inline-flex items-center gap-1.5 text-sm font-medium text-white/60 transition hover:text-white"
-            >
-              <Phone className="size-3.5" />
-              Book a Call
-            </Link>
-          </div>
         </div>
       </div>
 

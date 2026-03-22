@@ -172,3 +172,40 @@
 [data-slot="sidebar"] {
   background: transparent !important;
 }
+
+/* Hero button orbiting glow border */
+.hero-glow-clip {
+  overflow: hidden;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: calc(100% + 6px);
+  height: calc(100% + 6px);
+  background-color: transparent;
+  border-radius: 9999px;
+  z-index: -1;
+  pointer-events: none;
+}
+
+.hero-glow-bar {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 200%;
+  height: 200%;
+  background: conic-gradient(
+    from 0deg at 50% 50%,
+    transparent 0deg,
+    transparent 300deg,
+    rgba(255, 255, 255, 0.2) 320deg,
+    white 345deg,
+    rgba(255, 255, 255, 0.2) 360deg
+  );
+  animation: hero-btn-rotate 2s linear infinite;
+}
+
+@keyframes hero-btn-rotate {
+  from { transform: translate(-50%, -50%) rotate(0deg); }
+  to   { transform: translate(-50%, -50%) rotate(360deg); }
+}
