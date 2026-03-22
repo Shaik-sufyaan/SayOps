@@ -5,6 +5,7 @@ import Link from "next/link"
 import { Phone } from "lucide-react"
 import { IconBrandGoogle } from "@tabler/icons-react"
 import { Button } from "@/components/ui/button"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import { useAuth } from "@/lib/auth-context"
 import { landingContent } from "@/lib/landing-content"
 import PhoneDemoShowcase from "@/components/landing/PhoneDemoShowcase"
@@ -98,6 +99,13 @@ export default function LandingPageClient() {
   const { user, loading, signInWithGoogle } = useAuth()
   const [signingIn, setSigningIn] = useState(false)
   const [error, setError] = useState("")
+  const [waitlistOpen, setWaitlistOpen] = useState(false)
+  const [waitlistName, setWaitlistName] = useState("")
+  const [waitlistEmail, setWaitlistEmail] = useState("")
+  const [waitlistConsent, setWaitlistConsent] = useState(false)
+  const [waitlistSubmitting, setWaitlistSubmitting] = useState(false)
+  const [waitlistSuccess, setWaitlistSuccess] = useState(false)
+  const [waitlistError, setWaitlistError] = useState("")
 
   useEffect(() => {
     if (!loading && user) {
@@ -120,6 +128,25 @@ export default function LandingPageClient() {
       }
     } finally {
       setSigningIn(false)
+    }
+  }
+
+  const handleWaitlistSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setWaitlistSubmitting(true)
+    setWaitlistError("")
+    try {
+      const res = await fetch("/api/waitlist", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: waitlistName, email: waitlistEmail }),
+      })
+      if (!res.ok) throw new Error("Something went wrong")
+      setWaitlistSuccess(true)
+    } catch (err: any) {
+      setWaitlistError(err.message || "Failed to join waitlist")
+    } finally {
+      setWaitlistSubmitting(false)
     }
   }
 
@@ -219,21 +246,42 @@ export default function LandingPageClient() {
               {landingContent.hero.subhead}
             </p>
 
-            <div className="mt-8 flex w-full flex-col gap-3 sm:w-auto sm:flex-row">
-              <Button
-                size="lg"
-                onClick={handleGoogleSignIn}
-                disabled={signingIn || loading}
-                className="h-12 w-full rounded-full bg-[#0f172a] px-7 text-sm font-semibold text-white shadow-[0_8px_32px_-12px_rgba(15,23,42,0.52)] hover:bg-[#1e293b] sm:w-auto"
-              >
-                <IconBrandGoogle className="size-4" />
-                {signingIn ? "Signing in..." : landingContent.hero.primaryCta}
-              </Button>
+            <div className="mt-8 flex w-full flex-col items-center gap-3">
+              {/* Row 1: Google + Waitlist */}
+              <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row">
+                <div className="relative w-full sm:w-48">
+                  <div className="hero-glow-clip">
+                    <div className="hero-glow-bar" />
+                  </div>
+                  <Button
+                    size="lg"
+                    onClick={handleGoogleSignIn}
+                    disabled={signingIn || loading}
+                    className="relative z-10 h-12 w-full rounded-full bg-[#0f172a] px-7 text-sm font-semibold text-white hover:bg-[#1e293b]"
+                  >
+                    <IconBrandGoogle className="size-4" />
+                    {signingIn ? "Signing in..." : landingContent.hero.primaryCta}
+                  </Button>
+                </div>
+                <div className="relative w-full sm:w-48">
+                  <div className="hero-glow-clip">
+                    <div className="hero-glow-bar" />
+                  </div>
+                  <Button
+                    size="lg"
+                    onClick={() => { setWaitlistOpen(true); setWaitlistSuccess(false) }}
+                    className="relative z-10 h-12 w-full rounded-full bg-[#0f172a] px-7 text-sm font-semibold text-white hover:bg-[#1e293b]"
+                  >
+                    Join Waitlist
+                  </Button>
+                </div>
+              </div>
+              {/* Row 2: Book a Call centered */}
               <Button
                 size="lg"
                 variant="outline"
                 asChild
-                className="h-12 w-full rounded-full border-black/12 bg-white/80 px-7 text-sm font-medium text-[#111827] backdrop-blur-sm hover:bg-white hover:text-[#111827] sm:w-auto"
+                className="h-12 rounded-full border-black/12 bg-white/80 px-7 text-sm font-medium text-[#111827] backdrop-blur-sm hover:bg-white hover:text-[#111827]"
               >
                 <Link href="/book">
                   Book a Call
@@ -337,6 +385,73 @@ export default function LandingPageClient() {
       </main>
 
       <MarketingFooter />
+
+      {/* Waitlist Modal */}
+      <Dialog
+        open={waitlistOpen}
+        onOpenChange={(open) => {
+          setWaitlistOpen(open)
+          if (!open) {
+            setWaitlistSuccess(false)
+            setWaitlistName("")
+            setWaitlistEmail("")
+            setWaitlistConsent(false)
+            setWaitlistError("")
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Join the Waitlist</DialogTitle>
+            <DialogDescription>Be the first to know when SpeakOps is ready for you.</DialogDescription>
+          </DialogHeader>
+          {waitlistSuccess ? (
+            <div className="py-6 text-center">
+              <p className="text-lg font-semibold text-[#0f172a]">You're on the list!</p>
+              <p className="mt-2 text-sm text-[#6b7280]">We'll be in touch soon.</p>
+            </div>
+          ) : (
+            <form onSubmit={handleWaitlistSubmit} className="space-y-4 pt-2">
+              <input
+                type="text"
+                placeholder="Your name"
+                required
+                value={waitlistName}
+                onChange={(e) => setWaitlistName(e.target.value)}
+                className="w-full rounded-lg border border-[#e5e7eb] px-4 py-2.5 text-sm outline-none focus:border-[#7c6ff7] focus:ring-2 focus:ring-[#7c6ff7]/20"
+              />
+              <input
+                type="email"
+                placeholder="Email address"
+                required
+                value={waitlistEmail}
+                onChange={(e) => setWaitlistEmail(e.target.value)}
+                className="w-full rounded-lg border border-[#e5e7eb] px-4 py-2.5 text-sm outline-none focus:border-[#7c6ff7] focus:ring-2 focus:ring-[#7c6ff7]/20"
+              />
+              <label className="flex cursor-pointer items-start gap-3">
+                <input
+                  type="checkbox"
+                  required
+                  checked={waitlistConsent}
+                  onChange={(e) => setWaitlistConsent(e.target.checked)}
+                  className="mt-0.5 h-4 w-4 accent-[#7c6ff7]"
+                />
+                <span className="text-xs leading-relaxed text-[#6b7280]">
+                  I agree to receive product updates and news from SpeakOps by email. You can unsubscribe anytime.
+                </span>
+              </label>
+              {waitlistError && <p className="text-sm text-[#dc2626]">{waitlistError}</p>}
+              <Button
+                type="submit"
+                disabled={waitlistSubmitting}
+                className="w-full rounded-full bg-[#0f172a] text-white hover:bg-[#1e293b]"
+              >
+                {waitlistSubmitting ? "Joining..." : "Join Waitlist"}
+              </Button>
+            </form>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

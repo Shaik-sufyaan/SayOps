@@ -126,7 +126,7 @@ function WaveformBars({
       {heights.map((height, index) => (
         <div
           key={index}
-          className="w-[2px] rounded-full transition-all duration-[120ms]"
+          className="w-[2px] rounded-full transition-all duration-100"
           style={{
             height,
             backgroundColor: active ? barColor : idleColor,
