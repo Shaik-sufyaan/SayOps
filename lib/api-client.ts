@@ -40,6 +40,7 @@ import type {
   CustomerActionRequest,
   OrgTelephonyProfile,
   TelephonyOverview,
+  AgentConnectorAvailability,
 } from "@/lib/types"
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || process.env.AGENT_BACKEND_URL || "http://localhost:3001"
@@ -899,7 +900,6 @@ export async function fetchCalls(agentId: string, agentName?: string | null): Pr
     return []
   }
 }
-
 // ---- Integrations ----
 
 export async function fetchIntegrations(): Promise<any[]> {
@@ -912,13 +912,17 @@ export async function fetchIntegrations(): Promise<any[]> {
   }
 }
 
-export async function getIntegrationConnectUrl(provider: 'google' | 'gmail' | 'facebook' | 'hubspot'): Promise<string> {
-  const res = await apiFetch<{ url: string }>(`/integrations/${provider}/connect`)
+export async function getIntegrationConnectUrl(
+  provider: 'google' | 'gmail' | 'facebook' | 'hubspot',
+  agentId?: string,
+): Promise<string> {
+  const query = buildQueryString({ agentId })
+  const res = await apiFetch<{ url: string }>(`/integrations/${provider}/connect${query}`)
   return res.url
 }
 
-export async function getGoogleConnectUrl(): Promise<string> {
-  return getIntegrationConnectUrl("google")
+export async function getGoogleConnectUrl(agentId?: string): Promise<string> {
+  return getIntegrationConnectUrl("google", agentId)
 }
 
 export async function disconnectIntegration(provider: string): Promise<void> {
@@ -993,6 +997,11 @@ export async function getAgentChannels(agentId: string): Promise<AgentChannelBin
   return res.channels || []
 }
 
+export async function fetchAgentConnectorAvailability(agentId: string): Promise<AgentConnectorAvailability[]> {
+  const res = await apiFetch<{ connectors: AgentConnectorAvailability[] }>(`/agents/${agentId}/connector-availability`)
+  return res.connectors || []
+}
+
 export async function enableAgentChannel(agentId: string, channel: string, accountId?: string): Promise<EnableChannelResult> {
   return apiFetch<EnableChannelResult>(`/agents/${agentId}/channels/${channel}/enable`, {
     method: "POST",
@@ -1037,8 +1046,9 @@ export async function acceptInvite(token: string): Promise<any> {
 
 // ---- Stripe Connect ----
 
-export async function getStripeConnectUrl(): Promise<string> {
-  const res = await apiFetch<{ url: string }>("/integrations/stripe/connect")
+export async function getStripeConnectUrl(agentId?: string): Promise<string> {
+  const query = buildQueryString({ agentId })
+  const res = await apiFetch<{ url: string }>(`/integrations/stripe/connect${query}`)
   return res.url
 }
 
@@ -1225,7 +1235,6 @@ export async function fetchAdminOrganizations(page = 0, limit = 50): Promise<{ o
   const offset = page * limit
   return apiFetch<{ organizations: AdminOrg[]; total: number }>(`/admin/organizations?limit=${limit}&offset=${offset}`)
 }
-
 export async function fetchAdminOrgAgents(orgId: string): Promise<AdminAgent[]> {
   const res = await apiFetch<{ agents: AdminAgent[] }>(`/admin/organizations/${encodeURIComponent(orgId)}/agents`)
   return res.agents || []

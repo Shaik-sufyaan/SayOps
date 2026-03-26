@@ -6,9 +6,10 @@ const BASE_URL = "https://api.elevenlabs.io/v1"
 
 function getConfig() {
   const apiKey = process.env.ELEVENLABS_API_KEY
-  const voiceId = process.env.ELEVENLABS_VOICE_ID || "JBFqnCBsd6RMkjVDRZzb"
+  const voiceId = process.env.ELEVENLABS_VOICE_ID
   const modelId = process.env.ELEVENLABS_MODEL_ID || "eleven_multilingual_v2"
   if (!apiKey) throw new Error("ELEVENLABS_API_KEY not configured")
+  if (!voiceId) throw new Error("ELEVENLABS_VOICE_ID not configured")
   return { apiKey, voiceId, modelId }
 }
 

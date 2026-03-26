@@ -212,6 +212,18 @@ export interface Agent {
   updated_at: string
 }
 
+export type AgentConnectorId =
+  | 'google_calendar'
+  | 'gmail'
+  | 'hubspot'
+  | 'stripe_payments'
+
+export interface AgentConnectorAvailability {
+  id: AgentConnectorId
+  connected: boolean
+  canActivate: boolean
+}
+
 export interface AgentCreationOwnerContext {
   top_intents?: string[]
   policies?: string[]

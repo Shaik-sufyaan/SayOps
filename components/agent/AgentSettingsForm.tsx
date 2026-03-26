@@ -34,12 +34,15 @@ import { ConnectorSelector } from "./ConnectorSelector"
 import {
   updateAgent,
   getAgentChannels,
+  fetchAgentConnectorAvailability,
+  getIntegrationConnectUrl,
+  getStripeConnectUrl,
   enableAgentChannel,
   disableAgentChannel,
   type AgentChannelBinding,
 } from "@/lib/api-client"
 import { toast } from "sonner"
-import { Agent } from "@/lib/types"
+import { Agent, AgentConnectorAvailability, AgentConnectorId } from "@/lib/types"
 
 // Non-Meta channels — simple checkboxes (no account binding needed)
 const SIMPLE_PLATFORMS = [
@@ -53,6 +56,13 @@ const META_CHANNELS = [
   { id: 'facebook', label: 'Facebook Messenger' },
   { id: 'instagram', label: 'Instagram DM' },
 ]
+
+const CONNECTOR_LABELS: Record<AgentConnectorId, string> = {
+  google_calendar: 'Google Calendar',
+  gmail: 'Gmail',
+  hubspot: 'HubSpot',
+  stripe_payments: 'Stripe Payments',
+}
 
 const agentFormSchema = z.object({
   name: z.string().min(2, {
@@ -203,6 +213,8 @@ export function AgentSettingsForm({ agent }: { agent: Agent }) {
   const [isAdvancedOpen, setIsAdvancedOpen] = React.useState(false)
   const [isSubmitting, setIsSubmitting] = React.useState(false)
   const [channelBindings, setChannelBindings] = React.useState<AgentChannelBinding[]>([])
+  const [connectorAvailability, setConnectorAvailability] = React.useState<AgentConnectorAvailability[]>([])
+  const [connectorAvailabilityLoaded, setConnectorAvailabilityLoaded] = React.useState(false)
 
   const form = useForm<AgentFormValues>({
     resolver: zodResolver(agentFormSchema),
@@ -226,27 +238,91 @@ export function AgentSettingsForm({ agent }: { agent: Agent }) {
     }
   }, [agent.id])
 
+  const loadConnectorAvailability = React.useCallback(async () => {
+    try {
+      const connectors = await fetchAgentConnectorAvailability(agent.id)
+      setConnectorAvailability(connectors)
+    } catch {
+      setConnectorAvailability([])
+    } finally {
+      setConnectorAvailabilityLoaded(true)
+    }
+  }, [agent.id])
+
   React.useEffect(() => {
     loadChannels()
+    loadConnectorAvailability()
 
     // Check for channel_connected query param (after OAuth redirect)
     const params = new URLSearchParams(window.location.search)
-    const connected = params.get('channel_connected')
-    if (connected) {
-      toast.success(`${connected === 'facebook' ? 'Facebook Messenger' : 'Instagram DM'} connected successfully`)
-      // Clean up URL
+    const connectedChannel = params.get('channel_connected')
+    const connectedIntegration = params.get('integration_connected') as AgentConnectorId | null
+
+    if (connectedChannel) {
+      toast.success(`${connectedChannel === 'facebook' ? 'Facebook Messenger' : 'Instagram DM'} connected successfully`)
       params.delete('channel_connected')
+    }
+
+    if (connectedIntegration && CONNECTOR_LABELS[connectedIntegration]) {
+      toast.success(`${CONNECTOR_LABELS[connectedIntegration]} connected successfully`)
+      params.delete('integration_connected')
+      void loadConnectorAvailability()
+    }
+
+    if (connectedChannel || connectedIntegration) {
       const newUrl = params.toString()
         ? `${window.location.pathname}?${params}`
         : window.location.pathname
       window.history.replaceState({}, '', newUrl)
     }
-  }, [loadChannels])
+  }, [loadChannels, loadConnectorAvailability])
+
+  async function handleConnectorActivation(connectorId: AgentConnectorId) {
+    const availability = connectorAvailability.find((entry) => entry.id === connectorId)
+
+    if (!availability?.canActivate) {
+      toast.error(
+        connectorId === 'stripe_payments'
+          ? 'Only the organization owner can connect Stripe Payments.'
+          : 'Only admins or owners can connect this integration.'
+      )
+      return
+    }
+
+    try {
+      const url = connectorId === 'stripe_payments'
+        ? await getStripeConnectUrl(agent.id)
+        : await getIntegrationConnectUrl(
+            connectorId === 'google_calendar' ? 'google' : connectorId,
+            agent.id,
+          )
+
+      window.location.href = url
+    } catch (err: any) {
+      toast.error(err.message || `Failed to start ${CONNECTOR_LABELS[connectorId]} activation`)
+    }
+  }
 
   async function onSubmit(data: AgentFormValues) {
     setIsSubmitting(true)
     try {
-      await updateAgent(agent.id, data)
+      const connectedConnectorIds = new Set(
+        connectorAvailability
+          .filter((connector) => connector.connected)
+          .map((connector) => connector.id)
+      )
+      const enabledConnectors = connectorAvailability.length > 0
+        ? (data.enabled_connectors || []).filter((connectorId) =>
+            connectedConnectorIds.has(connectorId as AgentConnectorId)
+          )
+        : (data.enabled_connectors || [])
+
+      await updateAgent(agent.id, {
+        ...data,
+        enabled_connectors: enabledConnectors,
+      })
+      form.setValue("enabled_connectors", enabledConnectors, { shouldDirty: false })
+      await loadConnectorAvailability()
       toast.success("Agent settings updated successfully")
     } catch (err: any) {
       toast.error(err.message || "Failed to update agent settings")
@@ -372,10 +448,23 @@ export function AgentSettingsForm({ agent }: { agent: Agent }) {
                   <FormLabel>Enabled Connectors</FormLabel>
                   <FormDescription>Select which third-party tools this agent can use.</FormDescription>
                   <FormControl>
-                    <ConnectorSelector
-                      selected={field.value || []}
-                      onChange={field.onChange}
-                    />
+                    {connectorAvailabilityLoaded && connectorAvailability.length > 0 ? (
+                      <ConnectorSelector
+                        selected={field.value || []}
+                        availability={connectorAvailability}
+                        onChange={field.onChange}
+                        onRequestActivation={handleConnectorActivation}
+                      />
+                    ) : connectorAvailabilityLoaded ? (
+                      <div className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
+                        Integration availability could not be loaded right now. Save other settings and try reloading this page before changing connectors.
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-2 rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
+                        <IconLoader2 className="h-4 w-4 animate-spin" />
+                        Loading integration availability...
+                      </div>
+                    )}
                   </FormControl>
                   <FormMessage />
                 </FormItem>
