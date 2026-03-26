@@ -62,6 +62,86 @@ export interface CurrentUserResponse {
   allMemberships: OrgMembership[]
 }
 
+export interface OrgTelephonyProfile {
+  organization_id: string
+  business_name: string | null
+  doing_business_as: string | null
+  business_website: string | null
+  business_street_address: string | null
+  business_street_address2: string | null
+  business_city: string | null
+  business_state_province_region: string | null
+  business_postal_code: string | null
+  business_country: string
+  business_contact_first_name: string | null
+  business_contact_last_name: string | null
+  business_contact_email: string | null
+  business_contact_phone: string | null
+  notification_email: string | null
+  business_type: string | null
+  business_registration_number: string | null
+  business_registration_authority: string | null
+  business_registration_country: string | null
+  business_registration_phone_number: string | null
+  use_case_categories: string[]
+  use_case_summary: string | null
+  production_message_sample: string | null
+  opt_in_type: string
+  opt_in_workflow_description: string | null
+  opt_in_image_urls: string[]
+  opt_in_confirmation_message: string | null
+  help_message_sample: string | null
+  privacy_policy_url: string | null
+  terms_and_conditions_url: string | null
+  opt_in_keywords: string[]
+  message_volume: string
+  additional_information: string | null
+  twilio_subaccount_sid: string | null
+  twilio_subaccount_status: string | null
+  created_by: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface OrgPhoneBinding {
+  id: string
+  organization_id: string
+  assigned_agent_id: string | null
+  phone_number: string
+  phone_sid: string | null
+  provider: string
+  provider_phone_id: string | null
+  twilio_account_sid: string | null
+  twilio_subaccount_sid: string | null
+  use_case_key: string
+  is_primary: boolean
+  status: 'draft' | 'active' | 'released'
+  verification_sid: string | null
+  verification_status: string | null
+  verification_error_code: number | null
+  verification_rejection_reason: string | null
+  verification_edit_allowed: boolean | null
+  verification_edit_expiration: string | null
+  raw_verification_response: Record<string, unknown>
+  metadata: Record<string, unknown>
+  created_by: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface TelephonyOverview {
+  organization: {
+    id: string
+    name: string
+  }
+  profile: OrgTelephonyProfile
+  phoneBindings: OrgPhoneBinding[]
+  smsRoutingAgentId: string | null
+  hasExplicitSmsRouting: boolean
+  generatedPrivacyPolicyUrl: string
+  generatedTermsUrl: string
+}
+
 // Platform admin types (admin panel)
 
 export interface AdminOrg {
@@ -562,6 +642,35 @@ export interface LlmTraceDebugRecord {
   parsedToolCalls: unknown
   requestPayload: unknown
   responsePayload: unknown
+  normalized: LlmTraceInspectorPayload
+}
+
+export type LlmTraceSegmentKind =
+  | 'stable_prefix'
+  | 'runtime_context'
+  | 'conversation_context'
+  | 'conversation_history'
+  | 'tool_call'
+  | 'tool_result'
+  | 'attachment'
+  | 'provider_note'
+
+export interface LlmTraceSegment {
+  id: string
+  kind: LlmTraceSegmentKind
+  label: string
+  text: string
+  cached: boolean | null
+  source: string
+  role: 'system' | 'user' | 'assistant' | 'tool' | 'unknown'
+  path: string | null
+}
+
+export interface LlmTraceInspectorPayload {
+  inputTextFull: string | null
+  outputTextFull: string | null
+  segments: LlmTraceSegment[]
+  normalizationNotes: string[]
 }
 
 export interface LlmTraceDebugSession {

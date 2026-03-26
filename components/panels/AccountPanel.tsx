@@ -47,6 +47,7 @@ import {
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Separator } from "@/components/ui/separator"
+import { TelephonySettingsSection } from "@/components/settings/TelephonySettingsSection"
 import {
   Select,
   SelectContent,
@@ -421,12 +422,17 @@ export function AccountPanel() {
         </Card>
         </section>
 
-        {/* Workspace Settings Section */}
-        <section className="space-y-4">
-          <div className="flex items-center gap-2">
-            <IconUsers className="size-5 text-primary" />
-            <h2 className="text-xl font-semibold">Workspace</h2>
-          </div>
+      <Separator />
+
+      <TelephonySettingsSection />
+
+      <Separator />
+
+      <section className="space-y-4">
+        <div className="flex items-center gap-2">
+          <IconUsers className="size-5 text-primary" />
+          <h2 className="text-xl font-semibold">Workspace Settings</h2>
+        </div>
         <Card>
           <CardHeader>
             <CardTitle className="text-lg">Team Members</CardTitle>

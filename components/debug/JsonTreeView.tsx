@@ -1,7 +1,6 @@
 "use client"
 
 import * as React from "react"
-import { ScrollArea } from "@/components/ui/scroll-area"
 import { cn } from "@/lib/utils"
 import { IconChevronDown, IconChevronRight } from "@tabler/icons-react"
 
@@ -88,15 +87,23 @@ function JsonNode({
 
   if (!expandable) {
     return (
-      <div className="border-b border-border/40 last:border-b-0">
+      <div className="border-b border-border/60 last:border-b-0">
         <div className="flex items-start gap-3 px-4 py-2.5" style={{ paddingLeft: indent + 16 }}>
           {label ? (
-            <span className="shrink-0 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+            <span className="shrink-0 text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
               {label}
             </span>
           ) : null}
-          <div className={cn("min-w-0 font-mono text-xs text-slate-800", valueClassName)}>
-            {formatScalar(value)}
+          <div className="min-w-0 flex-1">
+            <div
+              className={cn(
+                "max-w-full font-mono text-xs text-foreground",
+                valueClassName,
+                wrapText ? "break-words" : "overflow-x-auto"
+              )}
+            >
+              {formatScalar(value)}
+            </div>
           </div>
         </div>
       </div>
@@ -108,28 +115,30 @@ function JsonNode({
     : sortObjectEntries(value as Record<string, unknown>)
 
   return (
-    <div className="border-b border-border/40 last:border-b-0">
+    <div className="border-b border-border/60 last:border-b-0">
       <button
         type="button"
         onClick={() => setOpen((current) => !current)}
-        className="flex w-full items-center gap-3 px-4 py-2.5 text-left hover:bg-slate-50/80"
+        className="flex w-full items-center gap-3 px-4 py-2.5 text-left transition-colors hover:bg-muted/35"
         style={{ paddingLeft: indent + 16 }}
       >
         {open ? (
-          <IconChevronDown className="size-4 shrink-0 text-slate-500" />
+          <IconChevronDown className="size-4 shrink-0 text-muted-foreground" />
         ) : (
-          <IconChevronRight className="size-4 shrink-0 text-slate-500" />
+          <IconChevronRight className="size-4 shrink-0 text-muted-foreground" />
         )}
         {label ? (
-          <span className="shrink-0 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+          <span className="shrink-0 text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
             {label}
           </span>
         ) : null}
-        <span className="font-mono text-xs text-slate-700">{summary}</span>
+        <span className="min-w-0 overflow-hidden text-ellipsis whitespace-nowrap font-mono text-xs text-foreground/80">
+          {summary}
+        </span>
       </button>
 
       {open ? (
-        <div className="bg-slate-50/40">
+        <div className="bg-muted/15">
           {entries.map(([childKey, childValue]) => (
             <JsonNode
               key={`${path}.${childKey}`}
@@ -161,12 +170,12 @@ export function JsonTreePanel({
   className?: string
 }) {
   return (
-    <div className={cn("min-h-0 overflow-hidden rounded-[26px] border border-slate-200 bg-white shadow-sm", className)}>
-      <div className="border-b border-slate-200 px-5 py-4">
-        <h2 className="text-sm font-semibold uppercase tracking-[0.24em] text-slate-500">{title}</h2>
+    <div className={cn("flex min-h-0 flex-col overflow-hidden rounded-[26px] border border-border bg-card shadow-sm", className)}>
+      <div className="border-b border-border px-5 py-4">
+        <h2 className="text-sm font-semibold uppercase tracking-[0.24em] text-muted-foreground">{title}</h2>
       </div>
-      <ScrollArea className="h-full">
-        <div className={cn(wrapText ? "min-w-0 w-full" : "min-w-max")}>
+      <div className="min-h-0 flex-1 overflow-auto">
+        <div className={cn("min-h-full", wrapText ? "w-full min-w-0" : "min-w-max")}>
           <JsonNode
             label={null}
             value={value}
@@ -176,7 +185,7 @@ export function JsonTreePanel({
             defaultOpenMatcher={defaultOpenMatcher}
           />
         </div>
-      </ScrollArea>
+      </div>
     </div>
   )
 }

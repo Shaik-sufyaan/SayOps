@@ -13,8 +13,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Textarea } from "@/components/ui/textarea"
-import { AssignExistingNumberDialog } from "@/components/agent/AssignExistingNumberDialog"
-import { createAgentStream, requestAgentNumber, uploadFiles } from "@/lib/api-client"
+import { createAgentStream, uploadFiles } from "@/lib/api-client"
 import { useViewParams } from "@/hooks/useViewParams"
 import { useAgentsStore } from "@/stores/agentsStore"
 import type { Agent, AgentCreationStreamEvent } from "@/lib/types"
@@ -75,7 +74,7 @@ function describeCreationEvent(event: AgentCreationStreamEvent): string {
 
 export function CreateAgentPanel() {
   const { setView } = useViewParams()
-  const { addAgent, updateAgent: updateAgentInStore } = useAgentsStore()
+  const { addAgent } = useAgentsStore()
 
   const [currentStep, setCurrentStep] = useState(0)
   const [name, setName] = useState("")
@@ -91,9 +90,6 @@ export function CreateAgentPanel() {
 
   const [showSuccess, setShowSuccess] = useState(false)
   const [createdAgent, setCreatedAgent] = useState<Agent | null>(null)
-  const [displayPhone, setDisplayPhone] = useState("")
-  const [isRequestingNumber, setIsRequestingNumber] = useState(false)
-  const [numberRequested, setNumberRequested] = useState(false)
 
   const steps = useMemo(
     () => [
@@ -233,7 +229,6 @@ export function CreateAgentPanel() {
 
       setCreatedAgent(agent)
       addAgent(agent)
-      setDisplayPhone(formatPhoneForDisplay(agent.phone_number))
       setShowSuccess(true)
       clearDraft()
       toast.success("Agent created successfully!")
@@ -242,27 +237,6 @@ export function CreateAgentPanel() {
     } finally {
       setIsCreating(false)
     }
-  }
-
-  const handleRequestNumber = async () => {
-    if (!createdAgent || createdAgent.phone_number || isRequestingNumber || numberRequested) return
-    setIsRequestingNumber(true)
-    try {
-      await requestAgentNumber(createdAgent.id)
-      setNumberRequested(true)
-      toast.success("Number request sent to eva@0lumens.com")
-    } catch (err: any) {
-      toast.error(err.message || "Failed to send number request")
-    } finally {
-      setIsRequestingNumber(false)
-    }
-  }
-
-  const handleAssignedNumber = (agent: Agent) => {
-    setCreatedAgent(agent)
-    setDisplayPhone(formatPhoneForDisplay(agent.phone_number))
-    setNumberRequested(false)
-    updateAgentInStore(agent.id, agent)
   }
 
   if (showSuccess && createdAgent) {
@@ -279,43 +253,31 @@ export function CreateAgentPanel() {
           </div>
 
           <div className="w-full rounded-lg border bg-muted/50 px-6 py-4 text-center">
-            <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Assigned Phone Number</p>
-            <p className="mt-2 text-3xl font-bold tabular-nums tracking-wide">{displayPhone}</p>
+            <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+              {createdAgent.phone_number ? "Legacy Direct Number" : "Organization Messaging Line"}
+            </p>
+            <p className="mt-2 text-3xl font-bold tabular-nums tracking-wide">
+              {createdAgent.phone_number ? formatPhoneForDisplay(createdAgent.phone_number) : "Configure in Settings"}
+            </p>
             {createdAgent.phone_number && (
               <div className="mt-2 flex justify-center">
                 <CallForwardingGuide phoneNumber={createdAgent.phone_number} />
               </div>
             )}
+            {!createdAgent.phone_number && (
+              <p className="mt-3 text-sm text-muted-foreground">
+                New agents now share your organization-level SMS/MMS line. Provision it in Settings and choose which agent handles inbound texts.
+              </p>
+            )}
           </div>
-
-          <AssignExistingNumberDialog
-            agentId={createdAgent.id}
-            agentName={createdAgent.name}
-            currentPhoneNumber={createdAgent.phone_number}
-            onAssigned={handleAssignedNumber}
-            buttonSize="lg"
-            buttonClassName="w-full"
-          />
 
           <Button
             size="lg"
-            variant={createdAgent.phone_number || numberRequested ? "secondary" : "default"}
-            onClick={handleRequestNumber}
-            disabled={Boolean(createdAgent.phone_number) || isRequestingNumber || numberRequested}
+            variant={createdAgent.phone_number ? "secondary" : "default"}
+            onClick={() => setView("settings")}
             className="w-full"
           >
-            {createdAgent.phone_number ? (
-              "Number Assigned"
-            ) : isRequestingNumber ? (
-              <>
-                <IconLoader2 className="mr-2 size-4 animate-spin" />
-                Sending Request...
-              </>
-            ) : numberRequested ? (
-              "Request Sent"
-            ) : (
-              "Request Number"
-            )}
+            {createdAgent.phone_number ? "Manage Messaging Settings" : "Configure Organization Telephony"}
           </Button>
 
           <Button size="lg" onClick={() => setView("calls")} className="w-full">
@@ -490,7 +452,7 @@ export function CreateAgentPanel() {
                       <IconLoader2 className="mr-2 animate-spin" /> Creating Agent...
                     </>
                   ) : (
-                    "Create Agent & Assign Number"
+                    "Create Agent"
                   )}
                 </Button>
               )}

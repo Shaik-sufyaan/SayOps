@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { fetchAgent, requestAgentNumber } from "@/lib/api-client"
+import { fetchAgent } from "@/lib/api-client"
 import { AssignExistingNumberDialog } from "@/components/agent/AssignExistingNumberDialog"
 import { AgentSettingsForm } from "@/components/agent/AgentSettingsForm"
 import { TestModeSimulator } from "@/components/agent/TestModeSimulator"
@@ -9,11 +9,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Spinner } from "@/components/ui/spinner"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { IconPhone, IconLoader2 } from "@tabler/icons-react"
+import { IconPhone } from "@tabler/icons-react"
 import { useViewParams } from "@/hooks/useViewParams"
 import { useAgentsStore } from "@/stores"
 import { Agent } from "@/lib/types"
-import { toast } from "sonner"
 import { CallForwardingGuide } from "@/components/CallForwardingGuide"
 
 interface AgentDetailPanelProps {
@@ -25,21 +24,6 @@ export function AgentDetailPanel({ agentId }: AgentDetailPanelProps) {
   const { updateAgent: updateAgentInStore } = useAgentsStore()
   const [agent, setAgent] = React.useState<Agent | null>(null)
   const [loading, setLoading] = React.useState(true)
-  const [isRequesting, setIsRequesting] = React.useState(false)
-
-  const handleRequestNumber = async () => {
-    if (!agent) return
-    setIsRequesting(true)
-    try {
-      await requestAgentNumber(agent.id)
-      setAgent({ ...agent, number_requested_at: new Date().toISOString() })
-      toast.success("Number request sent to eva@0lumens.com")
-    } catch (err: any) {
-      toast.error(err?.message || "Failed to send number request")
-    } finally {
-      setIsRequesting(false)
-    }
-  }
 
   const handleAssignedNumber = (updatedAgent: Agent) => {
     setAgent(updatedAgent)
@@ -112,24 +96,28 @@ export function AgentDetailPanel({ agentId }: AgentDetailPanelProps) {
               agentName={agent.name}
               currentPhoneNumber={agent.phone_number}
               onAssigned={handleAssignedNumber}
-              buttonLabel={agent.phone_number ? "Replace Number" : "Use Existing Number"}
+              buttonLabel={agent.phone_number ? "Replace Legacy Number" : "Attach Legacy Number"}
               buttonSize="sm"
             />
 
-            {!agent.phone_number && !agent.number_requested_at ? (
+            {!agent.phone_number ? (
               <Button
                 variant="outline"
                 size="sm"
-                onClick={handleRequestNumber}
-                disabled={isRequesting}
+                onClick={() => setView("settings")}
               >
-                {isRequesting
-                  ? <><IconLoader2 className="mr-2 size-4 animate-spin" />Requesting...</>
-                  : <><IconPhone className="mr-2 size-4" />Request Number</>}
+                <IconPhone className="mr-2 size-4" />
+                Manage Messaging Line
               </Button>
             ) : null}
           </div>
-          <CallForwardingGuide phoneNumber={agent.phone_number ?? "(Your AI Agent Number)"} />
+          {agent.phone_number ? (
+            <CallForwardingGuide phoneNumber={agent.phone_number} />
+          ) : (
+            <p className="text-xs text-muted-foreground">
+              Customer texting now routes through your organization messaging line in Settings.
+            </p>
+          )}
         </div>
       </div>
       <Tabs defaultValue="settings" className="space-y-4">

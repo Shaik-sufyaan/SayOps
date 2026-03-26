@@ -38,6 +38,8 @@ import type {
   CustomerManualStage,
   CustomerDecisionStatus,
   CustomerActionRequest,
+  OrgTelephonyProfile,
+  TelephonyOverview,
 } from "@/lib/types"
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || process.env.AGENT_BACKEND_URL || "http://localhost:3001"
@@ -324,7 +326,6 @@ export async function acceptCurrentTerms(): Promise<{ accepted: boolean; terms_v
     method: "POST",
   })
 }
-
 export async function acceptTerms(): Promise<{ accepted: boolean; terms_version: string }> {
   return acceptCurrentTerms()
 }
@@ -360,19 +361,69 @@ export async function createOrgInvite(email: string, role: string = "member"): P
     body: JSON.stringify({ email, role }),
   })
 }
-
 export async function deleteOrgInvite(inviteId: string): Promise<{ success: boolean }> {
   return apiFetch<{ success: boolean }>(`/org/invites/${inviteId}`, {
     method: "DELETE",
   })
 }
 
-// ---- Agents ----
+export async function fetchTelephonyOverview(): Promise<TelephonyOverview> {
+  return apiFetch<TelephonyOverview>("/org/telephony")
+}
 
+export async function saveTelephonyProfile(
+  profile: Partial<OrgTelephonyProfile>,
+): Promise<TelephonyOverview> {
+  return apiFetch<TelephonyOverview>("/org/telephony/profile", {
+    method: "PUT",
+    body: JSON.stringify(profile),
+  })
+}
+
+export async function ensureTelephonySubaccount(): Promise<TelephonyOverview> {
+  return apiFetch<TelephonyOverview>("/org/telephony/subaccount", {
+    method: "POST",
+  })
+}
+
+export async function provisionPrimaryOrgPhoneNumber(): Promise<TelephonyOverview> {
+  return apiFetch<TelephonyOverview>("/org/telephony/phones/provision-primary", {
+    method: "POST",
+  })
+}
+
+export async function assignExistingOrgPhoneNumber(phoneNumber: string): Promise<TelephonyOverview> {
+  return apiFetch<TelephonyOverview>("/org/telephony/phones/assign-existing", {
+    method: "POST",
+    body: JSON.stringify({ phoneNumber }),
+  })
+}
+
+export async function submitPrimaryNumberVerification(): Promise<TelephonyOverview> {
+  return apiFetch<TelephonyOverview>("/org/telephony/verification/submit", {
+    method: "POST",
+  })
+}
+
+export async function refreshPrimaryNumberVerification(): Promise<TelephonyOverview> {
+  return apiFetch<TelephonyOverview>("/org/telephony/verification/refresh", {
+    method: "POST",
+  })
+}
+
+export async function saveSmsRoutingAgent(agentId?: string | null): Promise<TelephonyOverview> {
+  return apiFetch<TelephonyOverview>("/org/telephony/sms-routing", {
+    method: "PUT",
+    body: JSON.stringify(agentId ? { agentId } : {}),
+  })
+}
+
+// ---- Agents ----
 export async function fetchAgents(): Promise<Agent[]> {
   const res = await apiFetch<{ agents: Agent[]; count: number }>("/agents")
   return res.agents
 }
+
 export async function fetchAgent(id: string): Promise<Agent> {
   return apiFetch<Agent>(`/agents/${id}`)
 }
