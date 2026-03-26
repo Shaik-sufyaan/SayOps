@@ -11,6 +11,7 @@ import {
 import { auth } from "@/lib/firebase"
 import { fetchCurrentUser, fetchTermsStatus, acceptCurrentTerms } from "@/lib/api-client"
 import { useOrgStore } from "@/stores/orgStore"
+import type { OrgMember } from "@/lib/types"
 
 const googleProvider = new GoogleAuthProvider()
 
@@ -18,7 +19,9 @@ interface AuthContextType {
   user: FirebaseUser | null
   loading: boolean
   isPlatformAdmin: boolean
-  termsAccepted: boolean | null  // null = still loading
+  organizationRole: OrgMember["role"] | null
+  canManageOrganization: boolean
+  termsAccepted: boolean | null
   termsVersion: string | null
   signInWithGoogle: () => Promise<FirebaseUser>
   signOut: () => Promise<void>
@@ -33,6 +36,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<FirebaseUser | null>(null)
   const [loading, setLoading] = useState(true)
   const [isPlatformAdmin, setIsPlatformAdmin] = useState(false)
+  const [organizationRole, setOrganizationRole] = useState<OrgMember["role"] | null>(null)
   const [termsAccepted, setTermsAccepted] = useState<boolean | null>(null)
   const [termsVersion, setTermsVersion] = useState<string | null>(null)
 
@@ -41,6 +45,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     if (!currentUser) {
       setIsPlatformAdmin(false)
+      setOrganizationRole(null)
       setTermsAccepted(null)
       setTermsVersion(null)
       orgStore.clear()
@@ -55,6 +60,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         orgStore.clear()
         const termsStatus = await fetchTermsStatus()
         setIsPlatformAdmin(false)
+        setOrganizationRole(null)
         setTermsAccepted(termsStatus.accepted)
         setTermsVersion(termsStatus.terms_version ?? null)
         return
@@ -62,11 +68,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       const { user: member, terms, allMemberships } = await fetchCurrentUser()
       setIsPlatformAdmin(member?.is_platform_admin === true)
+      setOrganizationRole(member?.role ?? null)
       setTermsAccepted(terms?.accepted !== false)
       setTermsVersion(terms?.terms_version ?? null)
       orgStore.setAllMemberships(allMemberships ?? [])
     } catch {
       setIsPlatformAdmin(false)
+      setOrganizationRole(null)
       setTermsAccepted(false)
       setTermsVersion(null)
     }
@@ -83,6 +91,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         getIdToken: async () => 'dev-token',
         reload: async () => {},
       } as any)
+      setOrganizationRole("owner")
       setTermsAccepted(true)
       setLoading(false)
       return
@@ -129,6 +138,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setTermsAccepted(true)
     setTermsVersion(terms.terms_version ?? null)
   }
+  const canManageOrganization = organizationRole === "owner" || organizationRole === "admin"
 
   return (
     <AuthContext.Provider
@@ -136,6 +146,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         user,
         loading,
         isPlatformAdmin,
+        organizationRole,
+        canManageOrganization,
         termsAccepted,
         termsVersion,
         signInWithGoogle,

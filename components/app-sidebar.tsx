@@ -19,7 +19,6 @@ import { NavIntegrations } from "@/components/sidebar/NavIntegrations"
 import { NavDocuments } from "@/components/sidebar/NavDocuments"
 import { NavCallHistory } from "@/components/sidebar/NavCallHistory"
 import { useSidebarStore, useAgentsStore, DEFAULT_WIDTH } from "@/stores"
-import { useOrgStore } from "@/stores/orgStore"
 import { useViewParams } from "@/hooks/useViewParams"
 import { cn } from "@/lib/utils"
 
@@ -46,16 +45,15 @@ function SpeakOpsWaveMark() {
 }
 
 export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
-  const { user, isPlatformAdmin } = useAuth()
+  const { user, isPlatformAdmin, canManageOrganization } = useAuth()
   const { agents } = useAgentsStore()
-  const currentRole = useOrgStore((state) => state.currentRole())
   const { view, setView } = useViewParams()
   const { width, setWidth, isCollapsed, toggleCollapsed, mobileOpen, setMobileOpen } = useSidebarStore()
   const resizeRef = React.useRef<{ startX: number; startWidth: number } | null>(null)
   const [usageStats, setUsageStats] = React.useState<{ totalCost: number; totalTokens: number } | null>(null)
   const [isSidebarReady, setIsSidebarReady] = React.useState(false)
-  const canViewTokenUsage =
-    isPlatformAdmin || currentRole === "owner" || currentRole === "admin"
+  const canViewTokenUsage = canManageOrganization || isPlatformAdmin
+  const effectiveView = view === "token-usage" && !canViewTokenUsage ? "calls" : view
 
   React.useEffect(() => {
     Promise.resolve(useSidebarStore.persist.rehydrate()).finally(() => {
@@ -88,7 +86,7 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
       clearInterval(interval)
       document.removeEventListener("visibilitychange", onVisible)
     }
-  }, [canViewTokenUsage, user])
+  }, [user, canViewTokenUsage])
 
   const handleMouseDown = (e: React.MouseEvent) => {
     e.preventDefault()
@@ -122,7 +120,7 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
   }
 
   // First-time onboarding: keep the create-agent flow focused and full-width.
-  if (view === "create-agent" && agents.length === 0) {
+  if (effectiveView === "create-agent" && agents.length === 0) {
     return null
   }
 
@@ -177,7 +175,7 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
                 <SidebarMenuItem>
                   <div className="flex items-center gap-2">
                     <SidebarMenuButton
-                      isActive={view === "calls"}
+                      isActive={effectiveView === "calls"}
                       onClick={() => setView("calls")}
                       className="h-auto flex-1 !p-0 hover:bg-transparent active:bg-transparent data-[active=true]:bg-transparent"
                     >
@@ -215,22 +213,22 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
                   <NavDocuments />
                   <div className="mt-auto">
                     <SidebarMenu className="px-2 pb-1">
-                      {canViewTokenUsage ? (
+                      {canViewTokenUsage && (
+                        <SidebarMenuItem>
+                          <SidebarMenuButton isActive={effectiveView === "token-usage"} onClick={() => setView("token-usage")} className="gap-2">
+                            <IconCoin className="size-4 text-amber-500" />
+                            <span>Token Usage</span>
+                            {usageStats && (
+                              <div className="ml-auto flex items-center gap-1.5 text-[10px] font-medium">
+                                <span className="text-emerald-500">+${usageStats.totalCost.toFixed(2)}</span>
+                                <span className="text-red-400">−{new Intl.NumberFormat().format(usageStats.totalTokens)} tok</span>
+                              </div>
+                            )}
+                          </SidebarMenuButton>
+                        </SidebarMenuItem>
+                      )}
                       <SidebarMenuItem>
-                        <SidebarMenuButton isActive={view === "token-usage"} onClick={() => setView("token-usage")} className="gap-2">
-                          <IconCoin className="size-4 text-amber-500" />
-                          <span>Token Usage</span>
-                          {usageStats && (
-                            <div className="ml-auto flex items-center gap-1.5 text-[10px] font-medium">
-                              <span className="text-emerald-500">+${usageStats.totalCost.toFixed(2)}</span>
-                              <span className="text-red-400">−{new Intl.NumberFormat().format(usageStats.totalTokens)} tok</span>
-                            </div>
-                          )}
-                        </SidebarMenuButton>
-                      </SidebarMenuItem>
-                      ) : null}
-                      <SidebarMenuItem>
-                        <SidebarMenuButton isActive={view === "payments"} onClick={() => setView("payments")} className="gap-2">
+                        <SidebarMenuButton isActive={effectiveView === "payments"} onClick={() => setView("payments")} className="gap-2">
                           <IconCreditCard className="size-4 text-violet-500" />
                           <span>Payments</span>
                         </SidebarMenuButton>
@@ -238,13 +236,13 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
                       {isPlatformAdmin && (
                         <>
                           <SidebarMenuItem>
-                            <SidebarMenuButton isActive={view === "admin-orgs" || view === "admin-org-detail"} onClick={() => setView("admin-orgs")} className="gap-2">
+                            <SidebarMenuButton isActive={effectiveView === "admin-orgs" || effectiveView === "admin-org-detail"} onClick={() => setView("admin-orgs")} className="gap-2">
                               <IconBuilding className="size-4 text-sky-500" />
                               <span>Organizations</span>
                             </SidebarMenuButton>
                           </SidebarMenuItem>
                           <SidebarMenuItem>
-                            <SidebarMenuButton isActive={view === "platform-health"} onClick={() => setView("platform-health")} className="gap-2">
+                            <SidebarMenuButton isActive={effectiveView === "platform-health"} onClick={() => setView("platform-health")} className="gap-2">
                               <IconHeartbeat className="size-4 text-emerald-500" />
                               <span>Platform Health</span>
                             </SidebarMenuButton>

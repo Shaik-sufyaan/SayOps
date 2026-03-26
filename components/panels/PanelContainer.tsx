@@ -7,7 +7,6 @@ import { useViewParams } from "@/hooks/useViewParams"
 import { useAgentsStore } from "@/stores"
 import { Spinner } from "@/components/ui/spinner"
 import { TermsAndConditionsModal } from "@/components/TermsAndConditionsModal"
-import { useOrgStore } from "@/stores/orgStore"
 import { DocumentsPanel } from "./DocumentsPanel"
 import { HistoryPanel } from "./HistoryPanel"
 import { IntegrationsPanel } from "./IntegrationsPanel"
@@ -26,14 +25,13 @@ import { CustomersPanel } from "./CustomersPanel"
 
 function PanelContainerInner() {
   const { view, agentId, orgId, customerId, setView } = useViewParams()
-  const { user, loading: authLoading, termsAccepted, isPlatformAdmin } = useAuth()
+  const { user, loading: authLoading, termsAccepted, isPlatformAdmin, canManageOrganization } = useAuth()
   const { agents, fetchAgents, setAgents } = useAgentsStore()
-  const currentRole = useOrgStore((state) => state.currentRole())
   const router = useRouter()
   const [visited, setVisited] = useState<Set<string>>(new Set(["calls"]))
   const [agentsChecked, setAgentsChecked] = useState(false)
-  const canViewTokenUsage =
-    isPlatformAdmin || currentRole === "owner" || currentRole === "admin"
+  const canViewTokenUsage = canManageOrganization || isPlatformAdmin
+  const effectiveView = view === "token-usage" && !canViewTokenUsage ? "calls" : view
 
   useEffect(() => {
     if (!authLoading && !user) router.push("/login")
@@ -52,10 +50,10 @@ function PanelContainerInner() {
 
   useEffect(() => {
     if (!user || !agentsChecked) return
-    if ((view === "calls" || view === "customers" || view === "customer-detail") && agents.length === 0) {
+    if ((effectiveView === "calls" || effectiveView === "customers" || effectiveView === "customer-detail") && agents.length === 0) {
       setView("create-agent")
     }
-  }, [user, agentsChecked, view, agents.length, setView])
+  }, [user, agentsChecked, effectiveView, agents.length, setView])
 
   useEffect(() => {
     if (view === "token-usage" && !canViewTokenUsage) {
@@ -97,49 +95,52 @@ function PanelContainerInner() {
 
   return (
     <>
-      <Panel active={view === "documents"} visited={visited.has("documents")}>
+      <Panel active={effectiveView === "documents"} visited={visited.has("documents")}>
         <DocumentsPanel />
       </Panel>
-      <Panel active={view === "calls"} visited={visited.has("calls")}>
+      <Panel active={effectiveView === "calls"} visited={visited.has("calls")}>
         <HistoryPanel key="calls" />
       </Panel>
-      <Panel active={view === "customers"} visited={visited.has("customers")}>
+      <Panel active={effectiveView === "customers"} visited={visited.has("customers")}>
         <CustomersPanel />
       </Panel>
-      <Panel active={view === "integrations"} visited={visited.has("integrations")}>
+      <Panel active={effectiveView === "integrations"} visited={visited.has("integrations")}>
         <IntegrationsPanel />
       </Panel>
-      <Panel active={view === "account" || view === "settings"} visited={visited.has("account")}>
+      <Panel active={effectiveView === "account" || effectiveView === "settings"} visited={visited.has("account")}>
         <AccountPanel />
       </Panel>
-      <Panel active={view === "notifications"} visited={visited.has("notifications")}>
+      <Panel active={effectiveView === "notifications"} visited={visited.has("notifications")}>
         <NotificationsPanel />
       </Panel>
-      <Panel active={view === "agent"} visited={visited.has("agent")}>
+      <Panel active={effectiveView === "agent"} visited={visited.has("agent")}>
+        {/* key={agentId} forces remount on agent switch — resets form state, tabs, etc. */}
         <AgentDetailPanel key={agentId} agentId={agentId} />
       </Panel>
-      <Panel active={view === "create-agent"} visited={visited.has("create-agent")}>
+      <Panel active={effectiveView === "create-agent"} visited={visited.has("create-agent")}>
         <CreateAgentPanel />
       </Panel>
-      <Panel active={view === "billing"} visited={visited.has("billing")}>
+      <Panel active={effectiveView === "billing"} visited={visited.has("billing")}>
         <SubscriptionPanel />
       </Panel>
-      <Panel active={view === "payments"} visited={visited.has("payments")}>
+      <Panel active={effectiveView === "payments"} visited={visited.has("payments")}>
         <BillingPanel />
       </Panel>
-      <Panel active={view === "token-usage" && canViewTokenUsage} visited={visited.has("token-usage") && canViewTokenUsage}>
-        <TokenUsagePanel />
-      </Panel>
-      <Panel active={view === "admin-orgs"} visited={visited.has("admin-orgs")}>
+      {canViewTokenUsage && (
+        <Panel active={effectiveView === "token-usage"} visited={visited.has("token-usage")}>
+          <TokenUsagePanel />
+        </Panel>
+      )}
+      <Panel active={effectiveView === "admin-orgs"} visited={visited.has("admin-orgs")}>
         <AdminOrgsPanel />
       </Panel>
-      <Panel active={view === "admin-org-detail"} visited={visited.has("admin-org-detail")}>
+      <Panel active={effectiveView === "admin-org-detail"} visited={visited.has("admin-org-detail")}>
         <AdminOrgDetailPanel orgId={orgId} />
       </Panel>
-      <Panel active={view === "platform-health"} visited={visited.has("platform-health")}>
+      <Panel active={effectiveView === "platform-health"} visited={visited.has("platform-health")}>
         <PlatformHealthPanel />
       </Panel>
-      <Panel active={view === "customer-detail"} visited={visited.has("customer-detail")}>
+      <Panel active={effectiveView === "customer-detail"} visited={visited.has("customer-detail")}>
         <CustomerDetailPanel customerId={customerId} />
       </Panel>
     </>
