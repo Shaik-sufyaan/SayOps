@@ -277,8 +277,17 @@ const useEvaChatStore = create<EvaChatState>()(
     }),
     {
       name: 'eva-chat-state',
+      version: 2,
+      migrate: (persistedState) => {
+        const state = persistedState as Partial<EvaChatState> | undefined
+
+        return {
+          conversationId: state?.conversationId ?? null,
+          messages: state?.messages ?? [],
+          size: state?.size ?? { width: 380, height: 520 },
+        }
+      },
       partialize: (state) => ({
-        isOpen: state.isOpen,
         conversationId: state.conversationId,
         messages: state.messages,
         size: state.size,

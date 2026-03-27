@@ -168,6 +168,11 @@ export function UniversalChat({
 
   const chatContent = (
     <>
+      {isNarrow && !isFullscreen ? (
+        <div className="flex justify-center border-b border-black/5 px-4 py-2.5 dark:border-white/10">
+          <span className="h-1.5 w-12 rounded-full bg-foreground/15" />
+        </div>
+      ) : null}
       <div className="flex items-center justify-between px-4 py-3 border-b bg-gradient-to-r from-blue-200 via-slate-100 to-purple-200 dark:from-zinc-900 dark:via-zinc-800 dark:to-zinc-900 text-foreground dark:text-white shrink-0">
         <div className="flex items-center gap-2 pl-2">
           <div>
@@ -421,23 +426,34 @@ export function UniversalChat({
   }
 
   // Open bubble widget
-  // Mobile/tablet (< lg): fullscreen overlay. Desktop (lg+): fixed bottom-right widget.
+  // Mobile/tablet (< lg): bottom sheet. Desktop (lg+): fixed bottom-right widget.
   return (
-    <div className={cn(
-      "fixed inset-0 z-50 flex flex-col items-stretch",
-      "lg:inset-auto lg:bottom-6 lg:right-6 lg:items-end"
-    )}>
-      <div className={cn("relative min-h-0", isNarrow ? "flex-1" : "lg:flex-none")}>
+    <div
+      className={cn(
+        "fixed inset-0 z-50",
+        isNarrow ? "flex items-end" : "pointer-events-none lg:inset-auto lg:bottom-6 lg:right-6 lg:flex lg:items-end"
+      )}
+    >
+      {isNarrow ? (
+        <button
+          aria-label={`Close ${title} chat`}
+          className="absolute inset-0 bg-slate-950/24 backdrop-blur-[2px]"
+          onClick={() => setOpen(false)}
+        />
+      ) : null}
+
+      <div className={cn("relative min-h-0", isNarrow ? "z-10 w-full" : "pointer-events-auto lg:flex-none")}>
         <div
           className={cn(
             "flex flex-col border overflow-hidden relative shadow-[0_28px_70px_-30px_rgba(15,23,42,0.4)]",
             "bg-background/90 backdrop-blur-lg border-white/55 dark:bg-zinc-950/90 dark:border-white/12",
-            "w-full h-full rounded-none",
-            "lg:rounded-xl lg:w-auto lg:h-auto"
+            isNarrow
+              ? "mx-auto h-[min(82vh,720px)] w-full rounded-t-[1.75rem] border-x border-t border-b-0"
+              : "w-full h-full rounded-none lg:rounded-xl lg:w-auto lg:h-auto"
           )}
           style={
             isNarrow
-              ? undefined
+              ? { paddingBottom: "env(safe-area-inset-bottom, 0px)" }
               : {
                   width: size.width,
                   height: size.height,
