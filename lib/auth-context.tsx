@@ -55,15 +55,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const orgStore = useOrgStore.getState()
       if (u) {
         try {
-          const [currentUserData, termsStatus] = await Promise.all([
-            fetchCurrentUser(),
-            fetchTermsStatus(),
-          ])
-          setIsPlatformAdmin(currentUserData.user?.is_platform_admin === true)
-          setTermsAccepted(termsStatus.accepted)
-          // Populate org store with all memberships
-          if (currentUserData.allMemberships) {
-            orgStore.setAllMemberships(currentUserData.allMemberships)
+          const hasPendingInviteToken = typeof window !== "undefined"
+            && Boolean(sessionStorage.getItem("pendingInviteToken"))
+
+          if (hasPendingInviteToken) {
+            orgStore.clear()
+            const termsStatus = await fetchTermsStatus()
+            setIsPlatformAdmin(false)
+            setTermsAccepted(termsStatus.accepted)
+          } else {
+            const [currentUserData, termsStatus] = await Promise.all([
+              fetchCurrentUser(),
+              fetchTermsStatus(),
+            ])
+            setIsPlatformAdmin(currentUserData.user?.is_platform_admin === true)
+            setTermsAccepted(termsStatus.accepted)
+            orgStore.setAllMemberships(currentUserData.allMemberships ?? [])
           }
         } catch {
           setIsPlatformAdmin(false)

@@ -34,6 +34,32 @@ export interface OrgMember {
   updated_at: string
 }
 
+export interface OrgMembership {
+  member: {
+    id: string
+    user_id: string
+    email: string
+    role: 'owner' | 'admin' | 'member'
+    display_name: string | null
+    organization_id: string
+  }
+  organization: {
+    id: string
+    name: string
+    subscription_tier: string
+  } | null
+}
+
+export interface CurrentUserResponse {
+  user: OrgMember
+  organization?: Organization | null
+  terms?: {
+    accepted: boolean
+    terms_version: string
+  }
+  allMemberships: OrgMembership[]
+}
+
 // Platform admin types (admin panel)
 
 export interface AdminOrg {
@@ -158,6 +184,7 @@ export interface Conversation {
   id: string
   organization_id: string
   agent_id: string
+  agent_name?: string | null
   customer_id: string | null
   member_id: string | null
   channel: 'sms' | 'voice' | 'web' | 'api' | 'instagram' | 'facebook' | 'whatsapp' | 'telegram'

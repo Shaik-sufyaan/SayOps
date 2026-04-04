@@ -7,13 +7,13 @@ import { formatDistanceToNowStrict } from "date-fns"
 import { CallTranscript } from "@/components/call-transcript"
 import { CallHistoryTable } from "@/components/call-history-table"
 import {
-  fetchAgents,
   fetchConversations,
   fetchLiveConversations,
   fetchMessages,
   mapConversationToCallRecord,
 } from "@/lib/api-client"
 import type { CallRecord, Conversation, Message } from "@/lib/types"
+import { useOrgStore } from "@/stores/orgStore"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
@@ -85,60 +85,25 @@ function LiveSignalPill({ label }: { label: string }) {
 }
 
 export function HistoryPanel() {
+  const currentOrgId = useOrgStore((state) => state.currentOrgId)
   const [conversations, setConversations] = React.useState<Conversation[]>([])
   const [liveConversations, setLiveConversations] = React.useState<Conversation[]>([])
-  const [agentNameById, setAgentNameById] = React.useState<Map<string, string>>(new Map())
   const [liveMessagesById, setLiveMessagesById] = React.useState<Record<string, Message[]>>({})
   const [liveMessagesLoading, setLiveMessagesLoading] = React.useState<Record<string, boolean>>({})
   const [loading, setLoading] = React.useState(true)
 
   const loadCalls = React.useCallback(async () => {
     try {
-      const [agents, nextConversations] = await Promise.all([
-        fetchAgents(),
-        fetchConversations(),
-      ])
-
-      const nextAgentNameById = new Map(agents.map((agent) => [agent.id, agent.name]))
+      const nextConversations = await fetchConversations()
       const visibleConversations = nextConversations.filter((conversation) => conversation.channel === "voice")
 
       React.startTransition(() => {
-        setAgentNameById(nextAgentNameById)
         setConversations(visibleConversations)
       })
     } catch (err) {
       console.error("Failed to load calls:", err)
     }
-  }, [])
-
-  React.useEffect(() => {
-    const initialize = async () => {
-      try {
-        await Promise.all([
-          loadCalls(),
-          fetchLiveConversations().then((nextLiveConversations) => {
-            React.startTransition(() => {
-              setLiveConversations(nextLiveConversations)
-            })
-          }),
-        ])
-      } catch (err) {
-        console.error("Failed to initialize calls view:", err)
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    void initialize()
-
-    const intervalId = window.setInterval(() => {
-      void loadCalls()
-    }, 8000)
-
-    return () => {
-      window.clearInterval(intervalId)
-    }
-  }, [loadCalls])
+  }, [currentOrgId])
 
   const loadLiveCalls = React.useCallback(async () => {
     try {
@@ -149,7 +114,52 @@ export function HistoryPanel() {
     } catch (err) {
       console.error("Failed to load live calls:", err)
     }
-  }, [])
+  }, [currentOrgId])
+
+  React.useEffect(() => {
+    let isActive = true
+
+    React.startTransition(() => {
+      setLoading(true)
+      setConversations([])
+      setLiveConversations([])
+      setLiveMessagesById({})
+      setLiveMessagesLoading({})
+    })
+
+    const initialize = async () => {
+      try {
+        await Promise.all([
+          loadCalls(),
+          loadLiveCalls(),
+        ])
+      } catch (err) {
+        console.error("Failed to initialize calls view:", err)
+      } finally {
+        if (isActive) {
+          setLoading(false)
+        }
+      }
+    }
+
+    void initialize()
+
+    return () => {
+      isActive = false
+    }
+  }, [currentOrgId, loadCalls, loadLiveCalls])
+
+  React.useEffect(() => {
+    if (loading) return
+
+    const intervalId = window.setInterval(() => {
+      void loadCalls()
+    }, 8000)
+
+    return () => {
+      window.clearInterval(intervalId)
+    }
+  }, [loadCalls, loading])
 
   React.useEffect(() => {
     if (loading) return
@@ -181,17 +191,13 @@ export function HistoryPanel() {
   )
 
   const calls = React.useMemo(
-    () => sortedConversations.map((conversation) => (
-      mapConversationToCallRecord(conversation, agentNameById.get(conversation.agent_id))
-    )),
-    [agentNameById, sortedConversations]
+    () => sortedConversations.map((conversation) => mapConversationToCallRecord(conversation)),
+    [sortedConversations]
   )
 
   const presentCalls = React.useMemo(
-    () => liveConversations.map((conversation) => (
-      mapConversationToCallRecord(conversation, agentNameById.get(conversation.agent_id))
-    )),
-    [agentNameById, liveConversations]
+    () => liveConversations.map((conversation) => mapConversationToCallRecord(conversation)),
+    [liveConversations]
   )
 
   const historyConversationIds = React.useMemo(

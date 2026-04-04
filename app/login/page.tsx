@@ -24,7 +24,6 @@ export default function LoginPage() {
     if (!loading && user) {
       const pendingToken = typeof window !== 'undefined' ? sessionStorage.getItem('pendingInviteToken') : null
       if (pendingToken) {
-        sessionStorage.removeItem('pendingInviteToken')
         router.push(`/invite/${pendingToken}`)
       } else {
         const search = typeof window !== 'undefined' ? window.location.search : ''
@@ -43,7 +42,6 @@ export default function LoginPage() {
       await signInWithGoogle()
       const pendingToken = typeof window !== 'undefined' ? sessionStorage.getItem('pendingInviteToken') : null
       if (pendingToken) {
-        sessionStorage.removeItem('pendingInviteToken')
         router.push(`/invite/${pendingToken}`)
       } else {
         const search = typeof window !== 'undefined' ? window.location.search : ''

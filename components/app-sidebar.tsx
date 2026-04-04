@@ -63,7 +63,10 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
   }, [])
 
   React.useEffect(() => {
-    if (!user) return
+    if (!user || currentRole === "member") {
+      setUsageStats(null)
+      return
+    }
 
     const refresh = () => {
       fetchUsageSummary("month")
@@ -84,7 +87,7 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
       clearInterval(interval)
       document.removeEventListener("visibilitychange", onVisible)
     }
-  }, [user])
+  }, [currentRole, user])
 
   const handleMouseDown = (e: React.MouseEvent) => {
     e.preventDefault()
@@ -118,7 +121,7 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
   }
 
   // First-time onboarding: keep the create-agent flow focused and full-width.
-  if (view === "create-agent" && agents.length === 0) {
+  if (view === "create-agent" && agents.length === 0 && currentRole !== "member") {
     return null
   }
 

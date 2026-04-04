@@ -52,6 +52,7 @@ export function NavUser({
   const { setView } = useViewParams()
   const { resolvedTheme, setTheme } = useTheme()
   const orgStore = useOrgStore()
+  const currentRole = orgStore.currentRole()
   const [mounted, setMounted] = React.useState(false)
   React.useEffect(() => setMounted(true), [])
 
@@ -159,21 +160,25 @@ export function NavUser({
                 <DropdownMenuSeparator />
               </>
             )}
-            <DropdownMenuGroup>
-              <DropdownMenuItem onClick={() => setView("account")}>
-                <IconUserCircle />
-                Account
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setView("billing")}>
-                <IconCreditCard />
-                Billing
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setView("notifications")}>
-                <IconNotification />
-                Notifications
-              </DropdownMenuItem>
-            </DropdownMenuGroup>
-            <DropdownMenuSeparator />
+            {currentRole !== "member" && (
+              <>
+                <DropdownMenuGroup>
+                  <DropdownMenuItem onClick={() => setView("account")}>
+                    <IconUserCircle />
+                    Account
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setView("billing")}>
+                    <IconCreditCard />
+                    Billing
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setView("notifications")}>
+                    <IconNotification />
+                    Notifications
+                  </DropdownMenuItem>
+                </DropdownMenuGroup>
+                <DropdownMenuSeparator />
+              </>
+            )}
             <DropdownMenuItem onClick={handleLogout}>
               <IconLogout />
               Log out
