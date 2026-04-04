@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 import { useAuth } from "@/lib/auth-context"
 import { useViewParams } from "@/hooks/useViewParams"
 import { useAgentsStore } from "@/stores"
+import { useOrgStore } from "@/stores/orgStore"
 import { Spinner } from "@/components/ui/spinner"
 import { TermsAndConditionsModal } from "@/components/TermsAndConditionsModal"
 import { DocumentsPanel } from "./DocumentsPanel"
@@ -25,6 +26,7 @@ function PanelContainerInner() {
   const { view, agentId, orgId, setView } = useViewParams()
   const { user, loading: authLoading, termsAccepted } = useAuth()
   const { agents, fetchAgents } = useAgentsStore()
+  const orgStore = useOrgStore()
   const router = useRouter()
   const [visited, setVisited] = useState<Set<string>>(new Set(["calls"]))
   const [agentsChecked, setAgentsChecked] = useState(false)
@@ -47,10 +49,12 @@ function PanelContainerInner() {
 
   useEffect(() => {
     if (!user || !agentsChecked) return
-    if (view === "calls" && agents.length === 0) {
+    // Only force create-agent for owners/admins, not invited members
+    const currentRole = orgStore.currentRole()
+    if (view === "calls" && agents.length === 0 && currentRole !== 'member') {
       setView("create-agent")
     }
-  }, [user, agentsChecked, view, agents.length, setView])
+  }, [user, agentsChecked, view, agents.length, setView, orgStore])
 
   // Track visited panels for lazy mounting
   useEffect(() => {

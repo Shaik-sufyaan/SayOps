@@ -3,33 +3,27 @@
 import * as React from "react"
 import {
   IconChevronDown,
-  IconChevronRight,
-  IconMessage,
+  IconFilter,
   IconPhone,
+  IconMessage,
+  IconSearch,
+  IconPlayerPlay,
+  IconX,
 } from "@tabler/icons-react"
 import { format } from "date-fns"
 
 import { fetchMessages, fetchRecordingUrl } from "@/lib/api-client"
 import type { CallRecord, Message } from "@/lib/types"
-import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
-import { ScrollArea } from "@/components/ui/scroll-area"
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table"
+import { Input } from "@/components/ui/input"
 import { CallTranscript } from "@/components/call-transcript"
+import { cn } from "@/lib/utils"
 
 type DatePreset = "today" | "yesterday" | "last7" | "last30"
 
@@ -49,7 +43,35 @@ function dayKey(date: Date): string {
   return nextDate.toISOString().slice(0, 10)
 }
 
-function CallRow({
+/** Derive a short status label from the call summary text */
+function deriveStatusLabel(summary: string): { label: string; color: string } {
+  const lower = summary.toLowerCase()
+
+  if (lower.includes("booked") || lower.includes("appointment") || lower.includes("scheduled"))
+    return { label: "Booked Appointment", color: "text-emerald-700 bg-emerald-50 border-emerald-200 dark:text-emerald-400 dark:bg-emerald-950 dark:border-emerald-800" }
+  if (lower.includes("purchase") || lower.includes("bought") || lower.includes("order") || lower.includes("sale"))
+    return { label: "Sale", color: "text-emerald-700 bg-emerald-50 border-emerald-200 dark:text-emerald-400 dark:bg-emerald-950 dark:border-emerald-800" }
+  if (lower.includes("resolved") || lower.includes("fixed") || lower.includes("solved"))
+    return { label: "Resolved", color: "text-emerald-700 bg-emerald-50 border-emerald-200 dark:text-emerald-400 dark:bg-emerald-950 dark:border-emerald-800" }
+  if (lower.includes("follow up") || lower.includes("follow-up") || lower.includes("callback"))
+    return { label: "Follow Up", color: "text-amber-700 bg-amber-50 border-amber-200 dark:text-amber-400 dark:bg-amber-950 dark:border-amber-800" }
+  if (lower.includes("voicemail") || lower.includes("no answer") || lower.includes("missed"))
+    return { label: "Missed", color: "text-red-600 bg-red-50 border-red-200 dark:text-red-400 dark:bg-red-950 dark:border-red-800" }
+  if (lower.includes("transfer") || lower.includes("escalat"))
+    return { label: "Transferred", color: "text-violet-700 bg-violet-50 border-violet-200 dark:text-violet-400 dark:bg-violet-950 dark:border-violet-800" }
+  if (lower.includes("pricing") || lower.includes("quote") || lower.includes("cost") || lower.includes("price"))
+    return { label: "Inquiry", color: "text-sky-700 bg-sky-50 border-sky-200 dark:text-sky-400 dark:bg-sky-950 dark:border-sky-800" }
+  if (lower.includes("question") || lower.includes("asked") || lower.includes("inquir") || lower.includes("information"))
+    return { label: "Inquiry", color: "text-sky-700 bg-sky-50 border-sky-200 dark:text-sky-400 dark:bg-sky-950 dark:border-sky-800" }
+  if (lower.includes("complaint") || lower.includes("unhappy") || lower.includes("dissatisfied"))
+    return { label: "Complaint", color: "text-red-600 bg-red-50 border-red-200 dark:text-red-400 dark:bg-red-950 dark:border-red-800" }
+  if (lower.includes("support") || lower.includes("help") || lower.includes("assist"))
+    return { label: "Support", color: "text-sky-700 bg-sky-50 border-sky-200 dark:text-sky-400 dark:bg-sky-950 dark:border-sky-800" }
+
+  return { label: "Conversation", color: "text-slate-600 bg-slate-50 border-slate-200 dark:text-slate-400 dark:bg-slate-900 dark:border-slate-700" }
+}
+
+function CallCard({
   call,
   showAgent,
 }: {
@@ -62,6 +84,7 @@ function CallRow({
   const [loading, setLoading] = React.useState(false)
   const [recordingUnavailable, setRecordingUnavailable] = React.useState(false)
   const timestamp = new Date(call.timestamp)
+  const status = React.useMemo(() => deriveStatusLabel(call.summary), [call.summary])
 
   React.useEffect(() => {
     setRecordingUrl(call.recording_url ?? null)
@@ -94,82 +117,122 @@ function CallRow({
   }
 
   return (
-    <>
-      <TableRow className="cursor-pointer hover:bg-muted/50" onClick={toggleOpen}>
-        <TableCell>
-          <Button variant="ghost" size="icon" className="size-6">
-            {isOpen ? <IconChevronDown className="size-4" /> : <IconChevronRight className="size-4" />}
-          </Button>
-        </TableCell>
-        <TableCell className="font-medium">
+    <div className="border-b last:border-b-0">
+      {/* Card header — clickable */}
+      <button
+        type="button"
+        onClick={toggleOpen}
+        className="flex w-full flex-col gap-2 px-5 py-4 text-left transition-colors hover:bg-muted/40"
+      >
+        {/* Top row: date/time + status badge */}
+        <div className="flex items-center justify-between gap-3">
+          <span className="text-sm font-semibold text-foreground">
+            {format(timestamp, "MMM d")} - {format(timestamp, "h:mm a")}
+          </span>
           <div className="flex items-center gap-2">
-            {call.channel === "web" ? (
-              <IconMessage className="size-4 text-muted-foreground" />
-            ) : (
-              <IconPhone className="size-4 text-muted-foreground" />
-            )}
-            {format(timestamp, "MMM d, yyyy")}
+            <span className={cn(
+              "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-medium",
+              status.color
+            )}>
+              <span className="inline-block size-1.5 rounded-full bg-current" />
+              {status.label}
+            </span>
+            <IconChevronDown
+              className={cn(
+                "size-4 text-muted-foreground transition-transform",
+                isOpen && "rotate-180"
+              )}
+            />
           </div>
-        </TableCell>
-        <TableCell className="text-muted-foreground">{format(timestamp, "h:mm a")}</TableCell>
-        {showAgent && (
-          <TableCell className="max-w-[180px] truncate text-muted-foreground">
-            {call.agent_name || "Agent"}
-          </TableCell>
-        )}
-        <TableCell className="text-sm font-medium">{formatDuration(call.duration_seconds)}</TableCell>
-        <TableCell>
-          <Badge variant="outline" className="w-fit">{call.caller_phone || "Web User"}</Badge>
-        </TableCell>
-        <TableCell className="max-w-[320px] truncate text-muted-foreground">
-          {call.summary}
-        </TableCell>
-      </TableRow>
+        </div>
 
+        {/* Agent + caller row */}
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
+          {call.channel === "voice" ? (
+            <IconPhone className="size-3.5" />
+          ) : (
+            <IconMessage className="size-3.5" />
+          )}
+          {showAgent && (
+            <span className="font-medium text-foreground">{call.agent_name || "Agent"}</span>
+          )}
+          <span>{call.caller_phone || "Web User"}</span>
+        </div>
+
+        {/* Duration + summary */}
+        <div className="flex flex-col gap-1">
+          <span className="text-xs text-muted-foreground">
+            Duration: {formatDuration(call.duration_seconds)}
+          </span>
+          <p className="line-clamp-2 text-sm text-muted-foreground">
+            {call.summary}
+          </p>
+        </div>
+      </button>
+
+      {/* Expanded detail */}
       {isOpen && (
-        <TableRow className="bg-muted/30 hover:bg-muted/30">
-          <TableCell colSpan={showAgent ? 7 : 6} className="p-0">
-            <div className="space-y-6 px-6 py-6">
-              <div className="flex flex-col gap-2">
-                <h4 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Analysis</h4>
-                <div className="rounded-xl border bg-background p-4 shadow-sm">
-                  <p className="text-sm leading-relaxed">{call.summary}</p>
-                  {recordingUrl && (
-                    <div className="mt-4 flex items-center gap-4 border-t pt-4">
-                      <span className="text-xs font-medium text-muted-foreground">Call Recording:</span>
-                      <audio controls src={recordingUrl} className="h-8 w-full max-w-md" />
-                    </div>
-                  )}
-                  {call.channel === "voice" && !recordingUrl && recordingUnavailable && (
-                    <div className="mt-4 border-t pt-4 text-xs text-muted-foreground">
-                      Recording unavailable for this call.
-                    </div>
-                  )}
-                </div>
+        <div className="border-t bg-muted/20 px-5 py-5">
+          <div className="space-y-5">
+            {/* Recording */}
+            {call.channel === "voice" && (
+              <div className="space-y-2">
+                <h4 className="flex items-center gap-2 text-sm font-semibold text-foreground">
+                  <IconPlayerPlay className="size-4" />
+                  Call Recording
+                </h4>
+                {recordingUrl ? (
+                  <div className="rounded-lg border bg-background p-3">
+                    <audio controls src={recordingUrl} className="h-8 w-full" />
+                  </div>
+                ) : recordingUnavailable ? (
+                  <p className="text-xs text-muted-foreground">Recording unavailable for this call.</p>
+                ) : loading ? (
+                  <p className="animate-pulse text-xs text-muted-foreground">Loading recording...</p>
+                ) : null}
               </div>
+            )}
 
-              <div className="flex flex-col gap-4">
-                <h4 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Transcript</h4>
-                <CallTranscript messages={messages} loading={loading} />
-              </div>
-
-              <div className="flex justify-end">
-                <Button variant="outline" size="sm" onClick={() => (window.location.href = `/assistant?ref=${call.id}`)}>
-                  Consult Business Assistant about this call
-                </Button>
+            {/* Summary */}
+            <div className="space-y-2">
+              <h4 className="text-sm font-semibold text-foreground">Summary</h4>
+              <div className="rounded-lg border bg-background p-3">
+                <p className="text-sm leading-relaxed text-foreground">{call.summary}</p>
               </div>
             </div>
-          </TableCell>
-        </TableRow>
+
+            {/* Transcript */}
+            <div className="space-y-2">
+              <h4 className="text-sm font-semibold text-foreground">Transcript</h4>
+              <div className="rounded-lg border bg-background p-3">
+                <CallTranscript messages={messages} loading={loading} />
+              </div>
+            </div>
+
+            {/* Action */}
+            <div className="flex justify-end">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  window.location.href = `/assistant?ref=${call.id}`
+                }}
+              >
+                Consult Business Assistant about this call
+              </Button>
+            </div>
+          </div>
+        </div>
       )}
-    </>
+    </div>
   )
 }
 
 export function CallHistoryTable({
   calls,
-  title = "History",
-  description = "Completed and archived calls and web chats handled by your agents.",
+  title = "Call History",
+  description,
   emptyStateText = "No history for this filter yet.",
   defaultDatePreset = "last7",
   showAgent = true,
@@ -183,6 +246,7 @@ export function CallHistoryTable({
 }) {
   const [viewFilter, setViewFilter] = React.useState<"all" | "voice" | "web">("all")
   const [datePreset, setDatePreset] = React.useState<DatePreset>(defaultDatePreset)
+  const [searchQuery, setSearchQuery] = React.useState("")
 
   React.useEffect(() => {
     setDatePreset(defaultDatePreset)
@@ -208,18 +272,28 @@ export function CallHistoryTable({
     })
   }, [calls, datePreset])
 
-  const filteredCalls = React.useMemo(() => {
+  const channelFilteredCalls = React.useMemo(() => {
     if (viewFilter === "all") return dateFilteredCalls
     if (viewFilter === "voice") return dateFilteredCalls.filter((call) => call.channel === "voice")
     return dateFilteredCalls.filter((call) => call.channel === "web")
   }, [dateFilteredCalls, viewFilter])
 
+  const filteredCalls = React.useMemo(() => {
+    if (!searchQuery.trim()) return channelFilteredCalls
+    const q = searchQuery.toLowerCase()
+    return channelFilteredCalls.filter(
+      (call) =>
+        call.summary?.toLowerCase().includes(q) ||
+        call.caller_phone?.toLowerCase().includes(q) ||
+        call.agent_name?.toLowerCase().includes(q)
+    )
+  }, [channelFilteredCalls, searchQuery])
+
   const counts = React.useMemo(() => {
     const voice = dateFilteredCalls.filter((call) => call.channel === "voice").length
     const web = dateFilteredCalls.filter((call) => call.channel === "web").length
     const recordings = dateFilteredCalls.filter((call) => call.channel === "voice" && call.has_recording).length
-    const transcripts = dateFilteredCalls.filter((call) => call.has_transcript).length
-    return { all: dateFilteredCalls.length, voice, web, recordings, transcripts }
+    return { all: dateFilteredCalls.length, voice, web, recordings }
   }, [dateFilteredCalls])
 
   const presets: { key: DatePreset; label: string }[] = [
@@ -229,71 +303,117 @@ export function CallHistoryTable({
     { key: "last30", label: "Last 30 days" },
   ]
 
+  const presetLabel = presets.find((p) => p.key === datePreset)?.label ?? "Last 30 days"
+
   return (
     <Card>
-      <CardHeader>
-        <CardTitle>{title}</CardTitle>
-        <CardDescription>{description}</CardDescription>
+      <CardHeader className="space-y-4 pb-0">
+        {/* Title + date range */}
+        <div>
+          <CardTitle className="text-xl">{title}</CardTitle>
+          <p className="mt-0.5 text-sm text-muted-foreground">{presetLabel}</p>
+        </div>
 
-        <div className="flex flex-wrap gap-2 pt-2">
-          {presets.map((preset) => (
-            <Button
-              key={preset.key}
-              variant={datePreset === preset.key ? "default" : "outline"}
-              size="sm"
-              onClick={() => setDatePreset(preset.key)}
+        {/* Stats bar */}
+        <div className="text-sm text-muted-foreground">
+          <span className="font-semibold text-foreground">{counts.voice}</span> Calls
+          <span className="mx-1.5">·</span>
+          <span className="font-semibold text-foreground">{counts.web}</span> Chats
+          <span className="mx-1.5">·</span>
+          <span className="font-semibold text-foreground">
+            {counts.recordings > 0 && counts.voice > 0
+              ? `${Math.round((counts.recordings / counts.voice) * 100)}%`
+              : "0%"}
+          </span> Recorded
+        </div>
+
+        {/* Filter tabs + search + filter */}
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          {/* Pill tabs */}
+          <div className="inline-flex rounded-lg border bg-muted/50 p-0.5">
+            <button
+              type="button"
+              onClick={() => setViewFilter("all")}
+              className={cn(
+                "rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
+                viewFilter === "all"
+                  ? "bg-background text-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground"
+              )}
             >
-              {preset.label}
-            </Button>
-          ))}
-        </div>
+              All
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewFilter("voice")}
+              className={cn(
+                "rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
+                viewFilter === "voice"
+                  ? "bg-background text-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground"
+              )}
+            >
+              Calls
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewFilter("web")}
+              className={cn(
+                "rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
+                viewFilter === "web"
+                  ? "bg-background text-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground"
+              )}
+            >
+              Chats
+            </button>
+          </div>
 
-        <div className="flex flex-wrap gap-x-4 gap-y-1 pt-1 text-sm text-muted-foreground">
-          <span><span className="font-medium text-foreground">{counts.all}</span> total</span>
-          <span><span className="font-medium text-foreground">{counts.voice}</span> calls</span>
-          <span><span className="font-medium text-foreground">{counts.web}</span> web chats</span>
-          <span><span className="font-medium text-foreground">{counts.recordings}</span> recordings</span>
-          <span><span className="font-medium text-foreground">{counts.transcripts}</span> transcripts</span>
-        </div>
-
-        <div className="flex flex-wrap gap-2 pt-2">
-          <Button variant={viewFilter === "all" ? "default" : "outline"} size="sm" onClick={() => setViewFilter("all")}>
-            All ({counts.all})
-          </Button>
-          <Button variant={viewFilter === "voice" ? "default" : "outline"} size="sm" onClick={() => setViewFilter("voice")}>
-            Calls ({counts.voice})
-          </Button>
-          <Button variant={viewFilter === "web" ? "default" : "outline"} size="sm" onClick={() => setViewFilter("web")}>
-            Web Chats ({counts.web})
-          </Button>
+          {/* Search + date filter */}
+          <div className="flex items-center gap-2">
+            <div className="relative flex-1 sm:w-48 sm:flex-none">
+              <IconSearch className="absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                placeholder="Search calls..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="h-8 pl-8 pr-8 text-sm"
+              />
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery("")}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                >
+                  <IconX className="size-3.5" />
+                </button>
+              )}
+            </div>
+            {/* Date preset dropdown styled as a button with icon */}
+            <div className="relative">
+              <select
+                value={datePreset}
+                onChange={(e) => setDatePreset(e.target.value as DatePreset)}
+                className="h-8 appearance-none rounded-md border bg-background px-3 pr-8 text-sm font-medium text-foreground transition-colors hover:bg-muted/50"
+              >
+                {presets.map((preset) => (
+                  <option key={preset.key} value={preset.key}>{preset.label}</option>
+                ))}
+              </select>
+              <IconFilter className="pointer-events-none absolute right-2 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
+            </div>
+          </div>
         </div>
       </CardHeader>
 
-      <CardContent>
+      <CardContent className="px-0 pt-4">
         {filteredCalls.length === 0 ? (
-          <p className="py-8 text-center text-muted-foreground">{emptyStateText}</p>
+          <p className="px-5 py-12 text-center text-muted-foreground">{emptyStateText}</p>
         ) : (
-          <div className="overflow-x-auto">
-            <ScrollArea className="w-full">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="w-10" />
-                    <TableHead>Date</TableHead>
-                    <TableHead>Time</TableHead>
-                    {showAgent && <TableHead>Agent</TableHead>}
-                    <TableHead>Duration</TableHead>
-                    <TableHead>Caller</TableHead>
-                    <TableHead>Summary</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredCalls.map((call) => (
-                    <CallRow key={call.id} call={call} showAgent={showAgent} />
-                  ))}
-                </TableBody>
-              </Table>
-            </ScrollArea>
+          <div className="divide-y">
+            {filteredCalls.map((call) => (
+              <CallCard key={call.id} call={call} showAgent={showAgent} />
+            ))}
           </div>
         )}
       </CardContent>

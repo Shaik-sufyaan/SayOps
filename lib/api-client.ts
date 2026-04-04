@@ -1,5 +1,6 @@
 import { auth } from "@/lib/firebase"
 import { publishAgentTraceError, publishAgentTraceSession } from "@/lib/agent-trace-debug"
+import { useOrgStore } from "@/stores/orgStore"
 import type {
   Agent,
   AgentCreationRequest,
@@ -175,7 +176,15 @@ async function getAuthHeaders(): Promise<HeadersInit> {
   const user = auth.currentUser
   if (!user) return {}
   const token = await user.getIdToken()
-  return { Authorization: `Bearer ${token}` }
+  const headers: HeadersInit = { Authorization: `Bearer ${token}` }
+
+  // Add X-Organization-Id header if user has a current org
+  const orgId = useOrgStore.getState().currentOrgId
+  if (orgId) {
+    (headers as Record<string, string>)['X-Organization-Id'] = orgId
+  }
+
+  return headers
 }
 
 /** Typed fetch wrapper that includes auth headers. */
@@ -670,6 +679,12 @@ export async function getDocumentStatus(docId: string): Promise<{ status: string
 export async function fetchOrgMembers(): Promise<OrgMember[]> {
   const res = await apiFetch<OrgMember[]>("/org/members")
   return res
+}
+
+export async function deleteOrgMember(memberId: string): Promise<{ success: boolean }> {
+  return apiFetch<{ success: boolean }>(`/org/members/${memberId}`, {
+    method: "DELETE",
+  })
 }
 
 // ---- Conversations & Messages ----

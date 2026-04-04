@@ -2,7 +2,9 @@
 
 import { useEffect, useState } from "react"
 import { useParams, useRouter } from "next/navigation"
-import { acceptInvite, getInvite } from "@/lib/api-client"
+import { acceptInvite, getInvite, fetchCurrentUser } from "@/lib/api-client"
+import { useAuth } from "@/lib/auth-context"
+import { useOrgStore } from "@/stores/orgStore"
 import { Button } from "@/components/ui/button"
 import { Card, CardHeader, CardTitle, CardContent, CardFooter, CardDescription } from "@/components/ui/card"
 import { Spinner } from "@/components/ui/spinner"
@@ -12,11 +14,14 @@ import { IconMail } from "@tabler/icons-react"
 export default function InvitePage() {
   const { token } = useParams()
   const router = useRouter()
+  const { user, loading: authLoading } = useAuth()
+  const orgStore = useOrgStore()
   const [invite, setInvite] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [accepting, setAccepting] = useState(false)
   const [error, setError] = useState("")
 
+  // Fetch invite details (public, no auth needed)
   useEffect(() => {
     if (token) {
       getInvite(token as string)
@@ -29,10 +34,31 @@ export default function InvitePage() {
     }
   }, [token])
 
+  // Handle auth check: if not logged in, redirect to login with pending invite token
+  useEffect(() => {
+    if (authLoading) return
+    if (!user && !error) {
+      // Save token to sessionStorage for auto-accept after login
+      sessionStorage.setItem('pendingInviteToken', token as string)
+      router.push("/login")
+    }
+  }, [user, authLoading, token, router, error])
+
   const handleAccept = async () => {
     setAccepting(true)
     try {
-      await acceptInvite(token as string)
+      const org = await acceptInvite(token as string)
+
+      // Refresh user memberships from the backend
+      const currentUserData = await fetchCurrentUser()
+      if (currentUserData.allMemberships) {
+        orgStore.setAllMemberships(currentUserData.allMemberships)
+        // Set current org to the newly joined organization
+        if (org?.id) {
+          orgStore.setCurrentOrg(org.id)
+        }
+      }
+
       toast({
         title: "Welcome!",
         description: "You have successfully joined the organization.",
@@ -50,7 +76,16 @@ export default function InvitePage() {
     }
   }
 
-  if (loading) {
+  if (loading || authLoading) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-muted/20">
+        <Spinner className="size-8" />
+      </div>
+    )
+  }
+
+  // If not authenticated, redirect in useEffect above
+  if (!user) {
     return (
       <div className="flex h-screen items-center justify-center bg-muted/20">
         <Spinner className="size-8" />
