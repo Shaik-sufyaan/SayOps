@@ -188,10 +188,30 @@ async function getAuthHeaders(): Promise<HeadersInit> {
 }
 
 /** Typed fetch wrapper that includes auth headers. */
+/** Public fetch (no auth headers) for public endpoints */
+async function publicFetch<T>(endpoint: string, options?: RequestInit): Promise<T> {
+  const url = buildApiUrl(endpoint)
+
+  const res = await fetch(url, {
+    ...options,
+    cache: options?.cache ?? "no-store",
+    headers: {
+      "Content-Type": "application/json",
+      ...options?.headers,
+    },
+  })
+
+  if (!res.ok) {
+    throw new Error(await parseErrorMessage(res))
+  }
+
+  return res.json()
+}
+
 async function apiFetch<T>(endpoint: string, options?: RequestInit): Promise<T> {
   const headers = await getAuthHeaders()
   const url = buildApiUrl(endpoint)
-  
+
   const res = await fetch(url, {
     ...options,
     cache: options?.cache ?? "no-store",
@@ -909,7 +929,7 @@ export async function disconnectTelegramAccount(botId: string): Promise<void> {
 }
 
 export async function getInvite(token: string): Promise<any> {
-  return apiFetch<any>(`/org/invites/${token}`)
+  return publicFetch<any>(`/org/invites/${token}`)
 }
 
 export async function acceptInvite(token: string): Promise<any> {

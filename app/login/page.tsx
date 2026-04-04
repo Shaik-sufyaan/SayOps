@@ -22,8 +22,14 @@ export default function LoginPage() {
 
   React.useEffect(() => {
     if (!loading && user) {
-      const search = typeof window !== 'undefined' ? window.location.search : ''
-      router.push(`/dashboard${search}`)
+      const pendingToken = typeof window !== 'undefined' ? sessionStorage.getItem('pendingInviteToken') : null
+      if (pendingToken) {
+        sessionStorage.removeItem('pendingInviteToken')
+        router.push(`/invite/${pendingToken}`)
+      } else {
+        const search = typeof window !== 'undefined' ? window.location.search : ''
+        router.push(`/dashboard${search}`)
+      }
     }
   }, [loading, user, router])
 
@@ -35,8 +41,14 @@ export default function LoginPage() {
 
     try {
       await signInWithGoogle()
-      const search = typeof window !== 'undefined' ? window.location.search : ''
-      router.push(`/dashboard${search}`)
+      const pendingToken = typeof window !== 'undefined' ? sessionStorage.getItem('pendingInviteToken') : null
+      if (pendingToken) {
+        sessionStorage.removeItem('pendingInviteToken')
+        router.push(`/invite/${pendingToken}`)
+      } else {
+        const search = typeof window !== 'undefined' ? window.location.search : ''
+        router.push(`/dashboard${search}`)
+      }
     } catch (err: any) {
       if (err?.code !== "auth/popup-closed-by-user") {
         setError(err.message || "Sign in failed")

@@ -37,12 +37,12 @@ export default function InvitePage() {
   // Handle auth check: if not logged in, redirect to login with pending invite token
   useEffect(() => {
     if (authLoading) return
-    if (!user && !error) {
+    if (!user) {
       // Save token to sessionStorage for auto-accept after login
       sessionStorage.setItem('pendingInviteToken', token as string)
       router.push("/login")
     }
-  }, [user, authLoading, token, router, error])
+  }, [user, authLoading, token, router])
 
   const handleAccept = async () => {
     setAccepting(true)
