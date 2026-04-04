@@ -3,7 +3,7 @@
 import React, { useEffect, useCallback } from "react"
 
 interface TermsContentProps {
-  scrollRef: React.RefObject<HTMLDivElement>
+  scrollRef: React.RefObject<HTMLDivElement | null>
   onScrolledToBottom: () => void
   className?: string
 }

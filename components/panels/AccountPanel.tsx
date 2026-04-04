@@ -9,6 +9,7 @@ import {
   IconTrash,
   IconCamera,
   IconX,
+  IconBuilding,
 } from "@tabler/icons-react"
 import { sendPasswordResetEmail, updateEmail, updateProfile } from "firebase/auth"
 import { toast } from "sonner"
@@ -46,9 +47,20 @@ import {
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Separator } from "@/components/ui/separator"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import { useOrgStore } from "@/stores/orgStore"
 
 export function AccountPanel() {
   const { user, loading: authLoading, refreshUser } = useAuth()
+  const currentOrgId = useOrgStore((state) => state.currentOrgId)
+  const allMemberships = useOrgStore((state) => state.allMemberships)
+  const setCurrentOrg = useOrgStore((state) => state.setCurrentOrg)
   const [displayName, setDisplayName] = React.useState("")
   const [email, setEmail] = React.useState("")
   const [photoURL, setPhotoURL] = React.useState("")
@@ -86,12 +98,17 @@ export function AccountPanel() {
       if (settings.display_name !== null) setDisplayName(settings.display_name)
       if (settings.profile_image_url !== null) setPhotoURL(settings.profile_image_url)
     })()
-  }, [authLoading, user])
+  }, [authLoading, currentOrgId, user])
 
   React.useEffect(() => {
     if (authLoading || !user) return
     loadTeamData()
-  }, [authLoading, user])
+  }, [authLoading, currentOrgId, user])
+
+  const currentMembership = React.useMemo(
+    () => allMemberships.find((membership) => membership.organization?.id === currentOrgId) ?? null,
+    [allMemberships, currentOrgId]
+  )
 
   const loadTeamData = async () => {
     try {
@@ -254,6 +271,52 @@ export function AccountPanel() {
       </div>
 
       <Separator />
+
+      <section className="space-y-4">
+        <div className="flex items-center gap-2">
+          <IconBuilding className="size-5 text-primary" />
+          <h2 className="text-xl font-semibold">Organization</h2>
+        </div>
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">Current Workspace</CardTitle>
+            <CardDescription>
+              Switch between organizations to manage a different workspace.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="space-y-2">
+              <Label htmlFor="account-organization">Organization</Label>
+              <Select
+                value={currentOrgId ?? undefined}
+                onValueChange={setCurrentOrg}
+                disabled={allMemberships.length <= 1}
+              >
+                <SelectTrigger id="account-organization">
+                  <SelectValue placeholder="Select organization" />
+                </SelectTrigger>
+                <SelectContent>
+                  {allMemberships
+                    .filter((membership) => membership.organization?.id)
+                    .map((membership) => (
+                      <SelectItem
+                        key={membership.organization!.id}
+                        value={membership.organization!.id}
+                      >
+                        {membership.organization!.name} ({membership.member.role})
+                      </SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              {currentMembership?.organization
+                ? `Currently managing ${currentMembership.organization.name} as ${currentMembership.member.role}.`
+                : "You only have access to one organization right now."}
+            </p>
+          </CardContent>
+        </Card>
+      </section>
 
       {/* Two-column layout: Profile on left, Workspace on right */}
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">

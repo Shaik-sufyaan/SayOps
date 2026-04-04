@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useEffect, useState, Suspense } from "react"
+import React, { Suspense, useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { useAuth } from "@/lib/auth-context"
 import { useViewParams } from "@/hooks/useViewParams"
@@ -25,41 +25,57 @@ import { PlatformHealthPanel } from "./PlatformHealthPanel"
 function PanelContainerInner() {
   const { view, agentId, orgId, setView } = useViewParams()
   const { user, loading: authLoading, termsAccepted } = useAuth()
-  const { agents, fetchAgents } = useAgentsStore()
-  const orgStore = useOrgStore()
+  const { agents, fetchAgents, setAgents } = useAgentsStore()
+  const currentOrgId = useOrgStore((state) => state.currentOrgId)
+  const currentRole = useOrgStore((state) => {
+    const membership = state.allMemberships.find((entry) => entry.organization?.id === state.currentOrgId)
+    return membership?.member.role ?? null
+  })
   const router = useRouter()
   const [visited, setVisited] = useState<Set<string>>(new Set(["calls"]))
   const [agentsChecked, setAgentsChecked] = useState(false)
 
-  // Centralized auth gate
   useEffect(() => {
     if (!authLoading && !user) router.push("/login")
   }, [user, authLoading, router])
 
-  // Ensure first-time users (no agents) are taken directly to Create Agent.
   useEffect(() => {
     if (!user) {
+      setAgents([])
       setAgentsChecked(false)
+      return
+    }
+
+    if (currentRole === "member") {
+      setAgents([])
+      setAgentsChecked(true)
       return
     }
 
     setAgentsChecked(false)
     fetchAgents(true).finally(() => setAgentsChecked(true))
-  }, [user, fetchAgents])
+  }, [currentRole, fetchAgents, setAgents, user])
 
   useEffect(() => {
     if (!user || !agentsChecked) return
-    // Only force create-agent for owners/admins, not invited members
-    const currentRole = orgStore.currentRole()
-    if (view === "calls" && agents.length === 0 && currentRole !== 'member') {
+    if (view === "calls" && agents.length === 0 && currentRole !== "member") {
       setView("create-agent")
     }
-  }, [user, agentsChecked, view, agents.length, setView, orgStore])
+  }, [user, agentsChecked, view, agents.length, setView, currentRole])
 
-  // Track visited panels for lazy mounting
+  useEffect(() => {
+    if (currentRole === "member" && view !== "calls") {
+      setView("calls")
+    }
+  }, [currentRole, setView, view])
+
   useEffect(() => {
     const normalizedView = view === "settings" ? "account" : view
-    const key = normalizedView === "agent" ? "agent" : normalizedView === "admin-org-detail" ? "admin-org-detail" : normalizedView
+    const key = normalizedView === "agent"
+      ? "agent"
+      : normalizedView === "admin-org-detail"
+        ? "admin-org-detail"
+        : normalizedView
     setVisited((prev) => (prev.has(key) ? prev : new Set(prev).add(key)))
   }, [view])
 
@@ -71,7 +87,6 @@ function PanelContainerInner() {
     )
   }
 
-  // Still checking terms status
   if (termsAccepted === null) {
     return (
       <div className="flex flex-1 items-center justify-center">
@@ -80,9 +95,12 @@ function PanelContainerInner() {
     )
   }
 
-  // User has not yet accepted T&C — show blocking modal
   if (termsAccepted === false) {
     return <TermsAndConditionsModal />
+  }
+
+  if (currentRole === "member") {
+    return <HistoryPanel key={`calls-${currentOrgId ?? "default"}`} />
   }
 
   return (
@@ -91,7 +109,7 @@ function PanelContainerInner() {
         <DocumentsPanel />
       </Panel>
       <Panel active={view === "calls"} visited={visited.has("calls")}>
-        <HistoryPanel />
+        <HistoryPanel key={`calls-${currentOrgId ?? "default"}`} />
       </Panel>
       <Panel active={view === "integrations"} visited={visited.has("integrations")}>
         <IntegrationsPanel />
@@ -103,7 +121,6 @@ function PanelContainerInner() {
         <NotificationsPanel />
       </Panel>
       <Panel active={view === "agent"} visited={visited.has("agent")}>
-        {/* key={agentId} forces remount on agent switch — resets form state, tabs, etc. */}
         <AgentDetailPanel key={agentId} agentId={agentId} />
       </Panel>
       <Panel active={view === "create-agent"} visited={visited.has("create-agent")}>
@@ -148,7 +165,6 @@ function Panel({
   )
 }
 
-// Suspense boundary required for useSearchParams() in useViewParams
 export function PanelContainer() {
   return (
     <Suspense

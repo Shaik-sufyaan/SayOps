@@ -12,7 +12,7 @@ import type {
   UserDocument,
   ChatResponse,
   OrgMember,
-  Organization,
+  CurrentUserResponse,
   OrgInvite,
   MessagePart,
   StripePayment,
@@ -271,14 +271,14 @@ function hydrateApiMessages<T extends {
 
 // ---- User & Org ----
 
-export async function fetchCurrentUser(): Promise<{ user: OrgMember; organization?: Organization }> {
+export async function fetchCurrentUser(): Promise<CurrentUserResponse> {
   // Get current user info from backend
-  const res = await apiFetch<{ user: OrgMember; organization?: Organization }>("/user/me")
+  const res = await apiFetch<CurrentUserResponse>("/user/me")
   return res
 }
 
 export async function fetchUser(): Promise<OrgMember> {
-  const res = await apiFetch<{ user: OrgMember; organization?: Organization }>("/user/me")
+  const res = await apiFetch<CurrentUserResponse>("/user/me")
   return res.user
 }
 
@@ -638,7 +638,7 @@ export function mapConversationToCallRecord(conversation: Conversation, agentNam
   return {
     id: conversation.id,
     agent_id: conversation.agent_id,
-    agent_name: agentName ?? null,
+    agent_name: agentName ?? conversation.agent_name ?? null,
     channel: conversation.channel,
     status: conversation.status,
     timestamp: conversation.started_at,

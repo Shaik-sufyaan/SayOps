@@ -8,6 +8,7 @@ import {
   IconCreditCard,
   IconExternalLink,
   IconTrash,
+  IconBuilding,
 } from "@tabler/icons-react"
 import { toast } from "sonner"
 
@@ -24,6 +25,13 @@ import { Separator } from "@/components/ui/separator"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -44,6 +52,7 @@ import {
 } from "@/lib/api-client"
 import { useAuth } from "@/lib/auth-context"
 import { OrgInvite, OrgMember, BillingStatus } from "@/lib/types"
+import { useOrgStore } from "@/stores/orgStore"
 
 const TIER_LABELS: Record<string, string> = {
   free: 'Free',
@@ -55,6 +64,9 @@ const TIER_LABELS: Record<string, string> = {
 
 export function SettingsPanel() {
   const { user, loading: authLoading } = useAuth()
+  const currentOrgId = useOrgStore((state) => state.currentOrgId)
+  const allMemberships = useOrgStore((state) => state.allMemberships)
+  const setCurrentOrg = useOrgStore((state) => state.setCurrentOrg)
   const [invites, setInvites] = React.useState<OrgInvite[]>([])
   const [members, setMembers] = React.useState<OrgMember[]>([])
   const [billing, setBilling] = React.useState<BillingStatus | null>(null)
@@ -82,7 +94,12 @@ export function SettingsPanel() {
       toast.error("Checkout cancelled — no charge was made.")
       window.history.replaceState({}, '', window.location.pathname)
     }
-  }, [authLoading, user])
+  }, [authLoading, currentOrgId, user])
+
+  const currentMembership = React.useMemo(
+    () => allMemberships.find((membership) => membership.organization?.id === currentOrgId) ?? null,
+    [allMemberships, currentOrgId]
+  )
 
   const loadData = async () => {
     try {
@@ -181,6 +198,50 @@ export function SettingsPanel() {
       </div>
 
       <Separator />
+
+      <section className="space-y-4">
+        <div className="flex items-center gap-2 mb-2">
+          <IconBuilding className="size-5 text-primary" />
+          <h2 className="text-xl font-semibold">Organization</h2>
+        </div>
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">Current Workspace</CardTitle>
+            <CardDescription>Choose which organization settings you want to manage.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="space-y-2">
+              <Label htmlFor="settings-organization">Organization</Label>
+              <Select
+                value={currentOrgId ?? undefined}
+                onValueChange={setCurrentOrg}
+                disabled={allMemberships.length <= 1}
+              >
+                <SelectTrigger id="settings-organization">
+                  <SelectValue placeholder="Select organization" />
+                </SelectTrigger>
+                <SelectContent>
+                  {allMemberships
+                    .filter((membership) => membership.organization?.id)
+                    .map((membership) => (
+                      <SelectItem
+                        key={membership.organization!.id}
+                        value={membership.organization!.id}
+                      >
+                        {membership.organization!.name} ({membership.member.role})
+                      </SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              {currentMembership?.organization
+                ? `Currently managing ${currentMembership.organization.name} as ${currentMembership.member.role}.`
+                : "You only have access to one organization right now."}
+            </p>
+          </CardContent>
+        </Card>
+      </section>
 
       <section className="space-y-4">
         <div className="flex items-center gap-2 mb-2">

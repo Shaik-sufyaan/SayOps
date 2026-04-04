@@ -15,7 +15,8 @@ export default function InvitePage() {
   const { token } = useParams()
   const router = useRouter()
   const { user, loading: authLoading } = useAuth()
-  const orgStore = useOrgStore()
+  const setAllMemberships = useOrgStore((state) => state.setAllMemberships)
+  const setCurrentOrg = useOrgStore((state) => state.setCurrentOrg)
   const [invite, setInvite] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [accepting, setAccepting] = useState(false)
@@ -23,26 +24,58 @@ export default function InvitePage() {
 
   // Fetch invite details (public, no auth needed)
   useEffect(() => {
-    if (token) {
-      getInvite(token as string)
-        .then(setInvite)
-        .catch((err) => {
-          console.error("Failed to fetch invite:", err)
+    if (!token) return
+
+    let cancelled = false
+
+    const loadInvite = async () => {
+      try {
+        const nextInvite = await getInvite(token as string)
+        if (!cancelled) {
+          setInvite(nextInvite)
+        }
+      } catch (err) {
+        console.error("Failed to fetch invite:", err)
+        sessionStorage.removeItem('pendingInviteToken')
+
+        // Restore org state for already authenticated users if the invite is invalid.
+        if (user) {
+          try {
+            const currentUserData = await fetchCurrentUser()
+            if (!cancelled) {
+              setAllMemberships(currentUserData.allMemberships ?? [])
+            }
+          } catch (restoreErr) {
+            console.error("Failed to restore memberships after invalid invite:", restoreErr)
+          }
+        }
+
+        if (!cancelled) {
           setError("Invalid or expired invitation.")
-        })
-        .finally(() => setLoading(false))
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false)
+        }
+      }
     }
-  }, [token])
+
+    void loadInvite()
+
+    return () => {
+      cancelled = true
+    }
+  }, [token, user, setAllMemberships])
 
   // Handle auth check: if not logged in, redirect to login with pending invite token
   useEffect(() => {
-    if (authLoading) return
+    if (authLoading || loading || error) return
     if (!user) {
       // Save token to sessionStorage for auto-accept after login
       sessionStorage.setItem('pendingInviteToken', token as string)
       router.push("/login")
     }
-  }, [user, authLoading, token, router])
+  }, [user, authLoading, loading, error, token, router])
 
   const handleAccept = async () => {
     setAccepting(true)
@@ -51,19 +84,19 @@ export default function InvitePage() {
 
       // Refresh user memberships from the backend
       const currentUserData = await fetchCurrentUser()
-      if (currentUserData.allMemberships) {
-        orgStore.setAllMemberships(currentUserData.allMemberships)
-        // Set current org to the newly joined organization
-        if (org?.id) {
-          orgStore.setCurrentOrg(org.id)
-        }
+      setAllMemberships(currentUserData.allMemberships ?? [])
+
+      const joinedOrgId = org?.id ?? currentUserData.organization?.id ?? null
+      if (joinedOrgId) {
+        setCurrentOrg(joinedOrgId)
       }
+      sessionStorage.removeItem('pendingInviteToken')
 
       toast({
-        title: "Welcome!",
-        description: "You have successfully joined the organization.",
+        title: org?.name ? `Joined ${org.name}` : "Organization joined",
+        description: "You can now view this organization's call logs.",
       })
-      router.push("/dashboard")
+      router.replace("/dashboard")
     } catch (err) {
       console.error("Failed to accept invite:", err)
       toast({
@@ -119,7 +152,9 @@ export default function InvitePage() {
 
         <CardFooter className="flex justify-center">
           {error ? (
-            <Button onClick={() => router.push("/login")}>Go to Login</Button>
+            <Button onClick={() => router.push(user ? "/dashboard" : "/login")}>
+              {user ? "Go to Dashboard" : "Go to Login"}
+            </Button>
           ) : (
             <Button onClick={handleAccept} disabled={accepting} className="w-full">
               {accepting ? <Spinner className="mr-2 size-4" /> : null}

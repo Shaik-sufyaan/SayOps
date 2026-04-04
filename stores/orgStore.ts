@@ -1,21 +1,6 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-
-export interface OrgMembership {
-  member: {
-    id: string
-    user_id: string
-    email: string
-    role: 'owner' | 'admin' | 'member'
-    display_name: string | null
-    organization_id: string
-  }
-  organization: {
-    id: string
-    name: string
-    subscription_tier: string
-  } | null
-}
+import type { OrgMembership } from '@/lib/types'
 
 interface OrgStore {
   currentOrgId: string | null
@@ -37,13 +22,18 @@ export const useOrgStore = create<OrgStore>()(
       },
 
       setAllMemberships: (memberships: OrgMembership[]) => {
-        set({ allMemberships: memberships })
-        // If no currentOrgId is set, default to the org where user is owner, else first
         const currentOrgId = get().currentOrgId
-        if (!currentOrgId && memberships.length > 0) {
-          const owned = memberships.find((m) => m.member.role === 'owner')
-          set({ currentOrgId: (owned ?? memberships[0]).organization.id })
-        }
+        const hasCurrentOrg = currentOrgId
+          ? memberships.some((membership) => membership.organization?.id === currentOrgId)
+          : false
+        const fallbackMembership = memberships.find((membership) => membership.member.role === 'owner')
+          ?? memberships.find((membership) => membership.organization?.id)
+          ?? null
+
+        set({
+          allMemberships: memberships,
+          currentOrgId: hasCurrentOrg ? currentOrgId : fallbackMembership?.organization?.id ?? null,
+        })
       },
 
       currentRole: () => {
