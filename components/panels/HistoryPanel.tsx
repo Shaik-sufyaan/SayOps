@@ -405,8 +405,7 @@ export function HistoryPanel() {
 
       <CallHistoryTable
         calls={historyCalls}
-        title="History"
-        description="Past phone calls across all agents."
+        title="Call History"
         emptyStateText="No past calls yet."
         defaultDatePreset="last30"
         showAgent
