@@ -10,6 +10,7 @@ import {
 } from "firebase/auth"
 import { auth } from "@/lib/firebase"
 import { fetchCurrentUser, fetchTermsStatus, acceptTerms } from "@/lib/api-client"
+import { useOrgStore } from "@/stores/orgStore"
 
 const googleProvider = new GoogleAuthProvider()
 
@@ -51,14 +52,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const unsubscribe = onAuthStateChanged(auth, async (u) => {
       setUser(u)
+      const orgStore = useOrgStore.getState()
       if (u) {
         try {
-          const [{ user: member }, termsStatus] = await Promise.all([
+          const [currentUserData, termsStatus] = await Promise.all([
             fetchCurrentUser(),
             fetchTermsStatus(),
           ])
-          setIsPlatformAdmin(member?.is_platform_admin === true)
+          setIsPlatformAdmin(currentUserData.user?.is_platform_admin === true)
           setTermsAccepted(termsStatus.accepted)
+          // Populate org store with all memberships
+          if (currentUserData.allMemberships) {
+            orgStore.setAllMemberships(currentUserData.allMemberships)
+          }
         } catch {
           setIsPlatformAdmin(false)
           setTermsAccepted(false)
@@ -66,6 +72,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       } else {
         setIsPlatformAdmin(false)
         setTermsAccepted(null)
+        orgStore.clear()
       }
       setLoading(false)
     })

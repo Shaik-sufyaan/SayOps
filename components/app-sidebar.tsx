@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/sidebar"
 import { useAuth } from "@/lib/auth-context"
 import { fetchUsageSummary } from "@/lib/api-client"
+import { useOrgStore } from "@/stores/orgStore"
 import { NavAgents } from "@/components/sidebar/NavAgents"
 import { NavIntegrations } from "@/components/sidebar/NavIntegrations"
 import { NavDocuments } from "@/components/sidebar/NavDocuments"
@@ -49,6 +50,8 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
   const { agents } = useAgentsStore()
   const { view, setView } = useViewParams()
   const { width, setWidth, isCollapsed, toggleCollapsed, mobileOpen, setMobileOpen } = useSidebarStore()
+  const orgStore = useOrgStore()
+  const currentRole = orgStore.currentRole()
   const resizeRef = React.useRef<{ startX: number; startWidth: number } | null>(null)
   const [usageStats, setUsageStats] = React.useState<{ totalCost: number; totalTokens: number } | null>(null)
   const [isSidebarReady, setIsSidebarReady] = React.useState(false)
@@ -204,46 +207,56 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
               {isSidebarReady ? (
                 <>
                   <NavCallHistory />
-                  <NavAgents />
-                  <NavDocuments />
+                  {/* Hide agent management for invited members (role === 'member') */}
+                  {currentRole !== 'member' && (
+                    <>
+                      <NavAgents />
+                      <NavDocuments />
+                    </>
+                  )}
                   <div className="mt-auto">
                     <SidebarMenu className="px-2 pb-1">
-                      <SidebarMenuItem>
-                        <SidebarMenuButton isActive={view === "token-usage"} onClick={() => setView("token-usage")} className="gap-2">
-                          <IconCoin className="size-4 text-amber-500" />
-                          <span>Token Usage</span>
-                          {usageStats && (
-                            <div className="ml-auto flex items-center gap-1.5 text-[10px] font-medium">
-                              <span className="text-emerald-500">+${usageStats.totalCost.toFixed(2)}</span>
-                              <span className="text-red-400">−{new Intl.NumberFormat().format(usageStats.totalTokens)} tok</span>
-                            </div>
-                          )}
-                        </SidebarMenuButton>
-                      </SidebarMenuItem>
-                      <SidebarMenuItem>
-                        <SidebarMenuButton isActive={view === "payments"} onClick={() => setView("payments")} className="gap-2">
-                          <IconCreditCard className="size-4 text-violet-500" />
-                          <span>Payments</span>
-                        </SidebarMenuButton>
-                      </SidebarMenuItem>
-                      {isPlatformAdmin && (
+                      {/* Hide admin/billing features for invited members */}
+                      {currentRole !== 'member' && (
                         <>
                           <SidebarMenuItem>
-                            <SidebarMenuButton isActive={view === "admin-orgs" || view === "admin-org-detail"} onClick={() => setView("admin-orgs")} className="gap-2">
-                              <IconBuilding className="size-4 text-sky-500" />
-                              <span>Organizations</span>
+                            <SidebarMenuButton isActive={view === "token-usage"} onClick={() => setView("token-usage")} className="gap-2">
+                              <IconCoin className="size-4 text-amber-500" />
+                              <span>Token Usage</span>
+                              {usageStats && (
+                                <div className="ml-auto flex items-center gap-1.5 text-[10px] font-medium">
+                                  <span className="text-emerald-500">+${usageStats.totalCost.toFixed(2)}</span>
+                                  <span className="text-red-400">−{new Intl.NumberFormat().format(usageStats.totalTokens)} tok</span>
+                                </div>
+                              )}
                             </SidebarMenuButton>
                           </SidebarMenuItem>
                           <SidebarMenuItem>
-                            <SidebarMenuButton isActive={view === "platform-health"} onClick={() => setView("platform-health")} className="gap-2">
-                              <IconHeartbeat className="size-4 text-emerald-500" />
-                              <span>Platform Health</span>
+                            <SidebarMenuButton isActive={view === "payments"} onClick={() => setView("payments")} className="gap-2">
+                              <IconCreditCard className="size-4 text-violet-500" />
+                              <span>Payments</span>
                             </SidebarMenuButton>
                           </SidebarMenuItem>
+                          {isPlatformAdmin && (
+                            <>
+                              <SidebarMenuItem>
+                                <SidebarMenuButton isActive={view === "admin-orgs" || view === "admin-org-detail"} onClick={() => setView("admin-orgs")} className="gap-2">
+                                  <IconBuilding className="size-4 text-sky-500" />
+                                  <span>Organizations</span>
+                                </SidebarMenuButton>
+                              </SidebarMenuItem>
+                              <SidebarMenuItem>
+                                <SidebarMenuButton isActive={view === "platform-health"} onClick={() => setView("platform-health")} className="gap-2">
+                                  <IconHeartbeat className="size-4 text-emerald-500" />
+                                  <span>Platform Health</span>
+                                </SidebarMenuButton>
+                              </SidebarMenuItem>
+                            </>
+                          )}
                         </>
                       )}
                     </SidebarMenu>
-                    <NavIntegrations />
+                    {currentRole !== 'member' && <NavIntegrations />}
                   </div>
                 </>
               ) : (
