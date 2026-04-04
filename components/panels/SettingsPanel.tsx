@@ -7,6 +7,7 @@ import {
   IconUsers,
   IconCreditCard,
   IconExternalLink,
+  IconTrash,
 } from "@tabler/icons-react"
 import { toast } from "sonner"
 
@@ -24,7 +25,17 @@ import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
+import {
   createOrgInvite,
+  deleteOrgInvite,
+  deleteOrgMember,
   fetchOrgInvites,
   fetchOrgMembers,
   fetchBillingStatus,
@@ -51,6 +62,12 @@ export function SettingsPanel() {
   const [inviteEmail, setInviteEmail] = React.useState("")
   const [isInviting, setIsInviting] = React.useState(false)
   const [billingLoading, setBillingLoading] = React.useState(false)
+
+  // Delete dialog state
+  const [deleteDialogOpen, setDeleteDialogOpen] = React.useState(false)
+  const [deletingItemId, setDeletingItemId] = React.useState<string | null>(null)
+  const [deletingItemType, setDeletingItemType] = React.useState<'invite' | 'member' | null>(null)
+  const [isDeleting, setIsDeleting] = React.useState(false)
 
   React.useEffect(() => {
     if (authLoading || !user) return
@@ -123,6 +140,34 @@ export function SettingsPanel() {
       toast.error(err.message || "Failed to send invitation")
     } finally {
       setIsInviting(false)
+    }
+  }
+
+  const openDeleteDialog = (itemId: string, itemType: 'invite' | 'member') => {
+    setDeletingItemId(itemId)
+    setDeletingItemType(itemType)
+    setDeleteDialogOpen(true)
+  }
+
+  const handleConfirmDelete = async () => {
+    if (!deletingItemId || !deletingItemType) return
+    setIsDeleting(true)
+    try {
+      if (deletingItemType === 'invite') {
+        await deleteOrgInvite(deletingItemId)
+        toast.success("Invitation deleted")
+      } else {
+        await deleteOrgMember(deletingItemId)
+        toast.success("Member removed")
+      }
+      setDeleteDialogOpen(false)
+      await loadData()
+    } catch (err: any) {
+      toast.error(err?.message || `Failed to delete ${deletingItemType}`)
+    } finally {
+      setIsDeleting(false)
+      setDeletingItemId(null)
+      setDeletingItemType(null)
     }
   }
 
@@ -232,7 +277,7 @@ export function SettingsPanel() {
                 <div className="divide-y rounded-lg border">
                   {invites.map((invite) => (
                     <div key={invite.id} className="flex items-center justify-between gap-2 flex-wrap p-4 bg-muted/10">
-                      <div className="flex items-center gap-3 min-w-0">
+                      <div className="flex items-center gap-3 min-w-0 flex-1">
                         <div className="size-8 rounded-full bg-primary/10 flex items-center justify-center">
                           <IconMail className="size-4 text-primary" />
                         </div>
@@ -241,9 +286,19 @@ export function SettingsPanel() {
                           <p className="text-xs text-muted-foreground capitalize">{invite.role}</p>
                         </div>
                       </div>
-                      <Badge variant="outline" className="text-[10px]">
-                        Expires {new Date(invite.expires_at).toLocaleDateString()}
-                      </Badge>
+                      <div className="flex items-center gap-2">
+                        <Badge variant="outline" className="text-[10px]">
+                          Expires {new Date(invite.expires_at).toLocaleDateString()}
+                        </Badge>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => openDeleteDialog(invite.id, 'invite')}
+                          className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                        >
+                          <IconTrash className="size-4" />
+                        </Button>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -258,7 +313,7 @@ export function SettingsPanel() {
                   <div className="divide-y rounded-lg border">
                     {members.map((member) => (
                       <div key={member.id} className="flex items-center justify-between gap-2 flex-wrap p-4">
-                        <div className="flex items-center gap-3 min-w-0">
+                        <div className="flex items-center gap-3 min-w-0 flex-1">
                           <div className="size-8 rounded-full bg-primary/10 flex items-center justify-center">
                             <IconUsers className="size-4 text-primary" />
                           </div>
@@ -267,9 +322,19 @@ export function SettingsPanel() {
                             <p className="text-xs text-muted-foreground capitalize">{member.role}</p>
                           </div>
                         </div>
-                        <Badge variant="secondary" className="text-[10px]">
-                          Joined {new Date(member.created_at).toLocaleDateString()}
-                        </Badge>
+                        <div className="flex items-center gap-2">
+                          <Badge variant="secondary" className="text-[10px]">
+                            Joined {new Date(member.created_at).toLocaleDateString()}
+                          </Badge>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => openDeleteDialog(member.id, 'member')}
+                            className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                          >
+                            <IconTrash className="size-4" />
+                          </Button>
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -279,6 +344,29 @@ export function SettingsPanel() {
           </CardContent>
         </Card>
       </section>
+
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogTitle>
+            {deletingItemType === 'invite' ? 'Delete Invitation' : 'Remove Member'}
+          </AlertDialogTitle>
+          <AlertDialogDescription>
+            {deletingItemType === 'invite'
+              ? 'This invitation will be deleted and the recipient will no longer be able to accept it.'
+              : 'This member will be removed from the organization. They can be re-invited later.'}
+          </AlertDialogDescription>
+          <div className="flex justify-end gap-3">
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirmDelete}
+              disabled={isDeleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {isDeleting ? 'Deleting...' : 'Delete'}
+            </AlertDialogAction>
+          </div>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }
