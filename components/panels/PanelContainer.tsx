@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation"
 import { useAuth } from "@/lib/auth-context"
 import { useViewParams } from "@/hooks/useViewParams"
 import { useAgentsStore } from "@/stores"
-import { useOrgStore } from "@/stores/orgStore"
 import { Spinner } from "@/components/ui/spinner"
 import { TermsAndConditionsModal } from "@/components/TermsAndConditionsModal"
 import { DocumentsPanel } from "./DocumentsPanel"
@@ -26,11 +25,6 @@ function PanelContainerInner() {
   const { view, agentId, orgId, setView } = useViewParams()
   const { user, loading: authLoading, termsAccepted } = useAuth()
   const { agents, fetchAgents, setAgents } = useAgentsStore()
-  const currentOrgId = useOrgStore((state) => state.currentOrgId)
-  const currentRole = useOrgStore((state) => {
-    const membership = state.allMemberships.find((entry) => entry.organization?.id === state.currentOrgId)
-    return membership?.member.role ?? null
-  })
   const router = useRouter()
   const [visited, setVisited] = useState<Set<string>>(new Set(["calls"]))
   const [agentsChecked, setAgentsChecked] = useState(false)
@@ -46,28 +40,16 @@ function PanelContainerInner() {
       return
     }
 
-    if (currentRole === "member") {
-      setAgents([])
-      setAgentsChecked(true)
-      return
-    }
-
     setAgentsChecked(false)
     fetchAgents(true).finally(() => setAgentsChecked(true))
-  }, [currentRole, fetchAgents, setAgents, user])
+  }, [fetchAgents, setAgents, user])
 
   useEffect(() => {
     if (!user || !agentsChecked) return
-    if (view === "calls" && agents.length === 0 && currentRole !== "member") {
+    if (view === "calls" && agents.length === 0) {
       setView("create-agent")
     }
-  }, [user, agentsChecked, view, agents.length, setView, currentRole])
-
-  useEffect(() => {
-    if (currentRole === "member" && view !== "calls") {
-      setView("calls")
-    }
-  }, [currentRole, setView, view])
+  }, [user, agentsChecked, view, agents.length, setView])
 
   useEffect(() => {
     const normalizedView = view === "settings" ? "account" : view
@@ -97,10 +79,6 @@ function PanelContainerInner() {
 
   if (termsAccepted === false) {
     return <TermsAndConditionsModal />
-  }
-
-  if (currentRole === "member") {
-    return <HistoryPanel key={`calls-${currentOrgId ?? "default"}`} />
   }
 
   return (
