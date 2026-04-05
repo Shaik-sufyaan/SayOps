@@ -29,9 +29,8 @@ export function useViewParams() {
   const pathname = usePathname()
 
   const rawView = searchParams.get("view") as ViewId | null
-  const normalizeView = (candidate: ViewId | null): Exclude<ViewId, "history"> | "dashboard" => {
-    if (candidate === "history") return "calls"
-    if (candidate === null || candidate === "dashboard") return "dashboard"
+  const normalizeView = (candidate: ViewId | null): Exclude<ViewId, "history" | "dashboard"> => {
+    if (candidate === "history" || candidate === null || candidate === "dashboard") return "calls"
     return candidate
   }
 
@@ -41,10 +40,10 @@ export function useViewParams() {
   const customerId = searchParams.get("customerId")
 
   useEffect(() => {
-    if (rawView !== "history") return
+    if (rawView !== "history" && rawView !== "dashboard") return
 
     const p = new URLSearchParams(searchParams.toString())
-    p.set("view", "calls")
+    p.delete("view")
     const next = p.toString()
     router.replace(next ? `${pathname}?${next}` : pathname, { scroll: false })
   }, [pathname, rawView, router, searchParams])
@@ -53,7 +52,7 @@ export function useViewParams() {
     (newView: ViewId, params?: Record<string, string>) => {
       const normalizedView = normalizeView(newView)
       const p = new URLSearchParams(searchParams.toString())
-      if (normalizedView === "dashboard") {
+      if (normalizedView === "calls") {
         p.delete("view")
       } else {
         p.set("view", normalizedView)

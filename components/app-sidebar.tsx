@@ -19,6 +19,7 @@ import { NavIntegrations } from "@/components/sidebar/NavIntegrations"
 import { NavDocuments } from "@/components/sidebar/NavDocuments"
 import { NavCallHistory } from "@/components/sidebar/NavCallHistory"
 import { useSidebarStore, useAgentsStore, DEFAULT_WIDTH } from "@/stores"
+import { useOrgStore } from "@/stores/orgStore"
 import { useViewParams } from "@/hooks/useViewParams"
 import { cn } from "@/lib/utils"
 
@@ -47,11 +48,13 @@ function SpeakOpsWaveMark() {
 export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
   const { user, isPlatformAdmin } = useAuth()
   const { agents } = useAgentsStore()
+  const currentRole = useOrgStore((state) => state.currentRole())
   const { view, setView } = useViewParams()
   const { width, setWidth, isCollapsed, toggleCollapsed, mobileOpen, setMobileOpen } = useSidebarStore()
   const resizeRef = React.useRef<{ startX: number; startWidth: number } | null>(null)
   const [usageStats, setUsageStats] = React.useState<{ totalCost: number; totalTokens: number } | null>(null)
   const [isSidebarReady, setIsSidebarReady] = React.useState(false)
+  const canViewTokenUsage = currentRole === "admin"
 
   React.useEffect(() => {
     Promise.resolve(useSidebarStore.persist.rehydrate()).finally(() => {
@@ -60,7 +63,7 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
   }, [])
 
   React.useEffect(() => {
-    if (!user) {
+    if (!user || !canViewTokenUsage) {
       setUsageStats(null)
       return
     }
@@ -84,7 +87,7 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
       clearInterval(interval)
       document.removeEventListener("visibilitychange", onVisible)
     }
-  }, [user])
+  }, [canViewTokenUsage, user])
 
   const handleMouseDown = (e: React.MouseEvent) => {
     e.preventDefault()
@@ -173,8 +176,8 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
                 <SidebarMenuItem>
                   <div className="flex items-center gap-2">
                     <SidebarMenuButton
-                      isActive={view === "dashboard"}
-                      onClick={() => setView("dashboard")}
+                      isActive={view === "calls"}
+                      onClick={() => setView("calls")}
                       className="h-auto flex-1 !p-0 hover:bg-transparent active:bg-transparent data-[active=true]:bg-transparent"
                     >
                       <div className="flex min-h-11 w-full items-center justify-between rounded-xl bg-white/18 px-3 py-2 text-foreground shadow-[inset_0_1px_0_rgba(255,255,255,0.16)] transition-colors hover:bg-white/24 dark:bg-white/5 dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.05)] dark:hover:bg-white/8">
@@ -211,6 +214,7 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
                   <NavDocuments />
                   <div className="mt-auto">
                     <SidebarMenu className="px-2 pb-1">
+                      {canViewTokenUsage ? (
                       <SidebarMenuItem>
                         <SidebarMenuButton isActive={view === "token-usage"} onClick={() => setView("token-usage")} className="gap-2">
                           <IconCoin className="size-4 text-amber-500" />
@@ -223,6 +227,7 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
                           )}
                         </SidebarMenuButton>
                       </SidebarMenuItem>
+                      ) : null}
                       <SidebarMenuItem>
                         <SidebarMenuButton isActive={view === "payments"} onClick={() => setView("payments")} className="gap-2">
                           <IconCreditCard className="size-4 text-violet-500" />

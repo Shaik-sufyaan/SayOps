@@ -318,8 +318,8 @@ export function CreateAgentPanel() {
             )}
           </Button>
 
-          <Button size="lg" onClick={() => setView("dashboard")} className="w-full">
-            Go to Dashboard
+          <Button size="lg" onClick={() => setView("calls")} className="w-full">
+            Go to Calls
           </Button>
         </div>
       </div>

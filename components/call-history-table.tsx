@@ -43,16 +43,6 @@ type StatusTone = {
   accentClassName: string
 }
 
-function formatDuration(seconds?: number): string {
-  const total = Number(seconds ?? 0)
-  if (!Number.isFinite(total) || total <= 0) return "-"
-  const mins = Math.floor(total / 60)
-  const secs = Math.floor(total % 60)
-  if (mins <= 0) return `${secs}s`
-  if (secs === 0) return `${mins}m`
-  return `${mins}m ${secs}s`
-}
-
 function dayKey(date: Date): string {
   const nextDate = new Date(date)
   nextDate.setHours(0, 0, 0, 0)
@@ -322,15 +312,9 @@ function CallCard({
           )}
           <span>{call.caller_phone || "Web User"}</span>
         </div>
-
-        <div className="flex flex-col gap-1">
-          <span className="text-xs text-muted-foreground">
-            Duration: {formatDuration(call.duration_seconds)}
-          </span>
-          <p className="line-clamp-2 text-sm text-muted-foreground">
-            {call.summary}
-          </p>
-        </div>
+        <p className="line-clamp-2 text-sm text-muted-foreground">
+          {call.summary}
+        </p>
       </button>
 
       {isOpen && (
@@ -388,9 +372,6 @@ function CallTableRow({
             {call.caller_phone || "Web User"}
           </div>
         </TableCell>
-        <TableCell className="whitespace-nowrap py-5 pr-4 text-sm text-muted-foreground">
-          {formatDuration(call.duration_seconds)}
-        </TableCell>
         <TableCell className="py-5">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0 space-y-2">
@@ -435,19 +416,15 @@ function CallTableRow({
 function TableSummaryFooter({
   totalCalls,
   bookedAppointments,
-  totalTalkSeconds,
 }: {
   totalCalls: number
   bookedAppointments: number
-  totalTalkSeconds: number
 }) {
   return (
     <div className="flex flex-wrap items-center justify-center gap-4 border-t border-border/60 bg-slate-50/70 px-4 py-4 text-sm text-muted-foreground dark:bg-slate-950/40">
       <span>{totalCalls} Total Calls</span>
       <span className="hidden h-4 w-px bg-border sm:block" />
       <span>{bookedAppointments} Appointments Booked</span>
-      <span className="hidden h-4 w-px bg-border sm:block" />
-      <span>{formatDuration(totalTalkSeconds)} Total Talk Time</span>
     </div>
   )
 }
@@ -525,14 +502,9 @@ export function CallHistoryTable({
     const bookedAppointments = filteredCalls.filter(
       (call) => deriveStatusTone(call.summary).label === "Booked Appointment"
     ).length
-    const totalTalkSeconds = filteredCalls.reduce((sum, call) => {
-      const duration = Number(call.duration_seconds ?? 0)
-      return Number.isFinite(duration) ? sum + duration : sum
-    }, 0)
     return {
       totalCalls: filteredCalls.length,
       bookedAppointments,
-      totalTalkSeconds,
     }
   }, [filteredCalls])
 
@@ -545,7 +517,7 @@ export function CallHistoryTable({
 
   const presetLabel = presets.find((preset) => preset.key === datePreset)?.label ?? "Last 30 days"
   const useTableLayout = layout === "table"
-  const columnCount = showAgent ? 7 : 6
+  const columnCount = showAgent ? 6 : 5
 
   return (
     <Card className={cn(useTableLayout && "overflow-hidden border-border/60 bg-background/95 shadow-sm")}>
@@ -657,7 +629,6 @@ export function CallHistoryTable({
               <TableSummaryFooter
                 totalCalls={footerStats.totalCalls}
                 bookedAppointments={footerStats.bookedAppointments}
-                totalTalkSeconds={footerStats.totalTalkSeconds}
               />
             </div>
 
@@ -681,9 +652,6 @@ export function CallHistoryTable({
                       Caller
                     </TableHead>
                     <TableHead className="h-12 py-3 text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground/90">
-                      Duration
-                    </TableHead>
-                    <TableHead className="h-12 py-3 text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground/90">
                       Summary
                     </TableHead>
                   </TableRow>
@@ -703,7 +671,6 @@ export function CallHistoryTable({
               <TableSummaryFooter
                 totalCalls={footerStats.totalCalls}
                 bookedAppointments={footerStats.bookedAppointments}
-                totalTalkSeconds={footerStats.totalTalkSeconds}
               />
             </div>
           </div>

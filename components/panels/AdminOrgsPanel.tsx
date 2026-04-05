@@ -62,7 +62,7 @@ export function AdminOrgsPanel() {
 
   // Redirect non-admins
   useEffect(() => {
-    if (!isPlatformAdmin) setView("dashboard")
+    if (!isPlatformAdmin) setView("calls")
   }, [isPlatformAdmin, setView])
 
   const load = useCallback(async (p: number) => {

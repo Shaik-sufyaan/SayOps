@@ -125,7 +125,7 @@ export function PlatformHealthPanel() {
   const [lastLoaded, setLastLoaded] = useState<Date | null>(null)
 
   useEffect(() => {
-    if (!isPlatformAdmin) setView("dashboard")
+    if (!isPlatformAdmin) setView("calls")
   }, [isPlatformAdmin, setView])
 
   const load = useCallback(async (silent = false) => {

@@ -7,7 +7,7 @@ import { useViewParams } from "@/hooks/useViewParams"
 import { useAgentsStore } from "@/stores"
 import { Spinner } from "@/components/ui/spinner"
 import { TermsAndConditionsModal } from "@/components/TermsAndConditionsModal"
-import { DashboardPanel } from "./DashboardPanel"
+import { useOrgStore } from "@/stores/orgStore"
 import { DocumentsPanel } from "./DocumentsPanel"
 import { HistoryPanel } from "./HistoryPanel"
 import { IntegrationsPanel } from "./IntegrationsPanel"
@@ -28,9 +28,11 @@ function PanelContainerInner() {
   const { view, agentId, orgId, customerId, setView } = useViewParams()
   const { user, loading: authLoading, termsAccepted } = useAuth()
   const { agents, fetchAgents, setAgents } = useAgentsStore()
+  const currentRole = useOrgStore((state) => state.currentRole())
   const router = useRouter()
-  const [visited, setVisited] = useState<Set<string>>(new Set(["dashboard"]))
+  const [visited, setVisited] = useState<Set<string>>(new Set(["calls"]))
   const [agentsChecked, setAgentsChecked] = useState(false)
+  const canViewTokenUsage = currentRole === "admin"
 
   useEffect(() => {
     if (!authLoading && !user) router.push("/login")
@@ -49,10 +51,16 @@ function PanelContainerInner() {
 
   useEffect(() => {
     if (!user || !agentsChecked) return
-    if ((view === "dashboard" || view === "calls" || view === "customers" || view === "customer-detail") && agents.length === 0) {
+    if ((view === "calls" || view === "customers" || view === "customer-detail") && agents.length === 0) {
       setView("create-agent")
     }
   }, [user, agentsChecked, view, agents.length, setView])
+
+  useEffect(() => {
+    if (view === "token-usage" && !canViewTokenUsage) {
+      setView("calls")
+    }
+  }, [canViewTokenUsage, setView, view])
 
   useEffect(() => {
     const normalizedView = view === "settings" ? "account" : view
@@ -88,9 +96,6 @@ function PanelContainerInner() {
 
   return (
     <>
-      <Panel active={view === "dashboard"} visited={visited.has("dashboard")}>
-        <DashboardPanel />
-      </Panel>
       <Panel active={view === "documents"} visited={visited.has("documents")}>
         <DocumentsPanel />
       </Panel>
@@ -121,7 +126,7 @@ function PanelContainerInner() {
       <Panel active={view === "payments"} visited={visited.has("payments")}>
         <BillingPanel />
       </Panel>
-      <Panel active={view === "token-usage"} visited={visited.has("token-usage")}>
+      <Panel active={view === "token-usage" && canViewTokenUsage} visited={visited.has("token-usage") && canViewTokenUsage}>
         <TokenUsagePanel />
       </Panel>
       <Panel active={view === "admin-orgs"} visited={visited.has("admin-orgs")}>
