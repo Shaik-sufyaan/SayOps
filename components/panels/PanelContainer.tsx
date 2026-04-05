@@ -26,13 +26,14 @@ import { CustomersPanel } from "./CustomersPanel"
 
 function PanelContainerInner() {
   const { view, agentId, orgId, customerId, setView } = useViewParams()
-  const { user, loading: authLoading, termsAccepted } = useAuth()
+  const { user, loading: authLoading, termsAccepted, isPlatformAdmin } = useAuth()
   const { agents, fetchAgents, setAgents } = useAgentsStore()
   const currentRole = useOrgStore((state) => state.currentRole())
   const router = useRouter()
   const [visited, setVisited] = useState<Set<string>>(new Set(["calls"]))
   const [agentsChecked, setAgentsChecked] = useState(false)
-  const canViewTokenUsage = currentRole === "admin"
+  const canViewTokenUsage =
+    isPlatformAdmin || currentRole === "owner" || currentRole === "admin"
 
   useEffect(() => {
     if (!authLoading && !user) router.push("/login")

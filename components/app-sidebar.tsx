@@ -54,7 +54,8 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
   const resizeRef = React.useRef<{ startX: number; startWidth: number } | null>(null)
   const [usageStats, setUsageStats] = React.useState<{ totalCost: number; totalTokens: number } | null>(null)
   const [isSidebarReady, setIsSidebarReady] = React.useState(false)
-  const canViewTokenUsage = currentRole === "admin"
+  const canViewTokenUsage =
+    isPlatformAdmin || currentRole === "owner" || currentRole === "admin"
 
   React.useEffect(() => {
     Promise.resolve(useSidebarStore.persist.rehydrate()).finally(() => {
