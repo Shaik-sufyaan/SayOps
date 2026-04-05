@@ -7,8 +7,6 @@ import {
   IconLogout,
   IconNotification,
   IconUserCircle,
-  IconBuilding,
-  IconCheck,
 } from "@tabler/icons-react"
 
 import {
@@ -36,7 +34,6 @@ import { useViewParams } from "@/hooks/useViewParams"
 import { useTheme } from "next-themes"
 import { IconSun, IconMoon } from "@tabler/icons-react"
 import { Badge } from "@/components/ui/badge"
-import { useOrgStore } from "@/stores/orgStore"
 
 export function NavUser({
   user,
@@ -51,8 +48,6 @@ export function NavUser({
   const { signOut, isPlatformAdmin } = useAuth()
   const { setView } = useViewParams()
   const { resolvedTheme, setTheme } = useTheme()
-  const orgStore = useOrgStore()
-  const currentRole = orgStore.currentRole()
   const [mounted, setMounted] = React.useState(false)
   React.useEffect(() => setMounted(true), [])
 
@@ -128,57 +123,21 @@ export function NavUser({
               </div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
-            {orgStore.allMemberships.length > 1 && (
-              <>
-                <DropdownMenuLabel className="text-xs font-semibold text-muted-foreground">
-                  Switch Organization
-                </DropdownMenuLabel>
-                <DropdownMenuGroup>
-                  {orgStore.allMemberships.map(({ member, organization }) => (
-                    <DropdownMenuItem
-                      key={organization?.id}
-                      onClick={() => {
-                        if (organization?.id) {
-                          orgStore.setCurrentOrg(organization.id)
-                        }
-                      }}
-                      className="flex items-center justify-between"
-                    >
-                      <div className="flex items-center gap-2">
-                        <IconBuilding className="size-4" />
-                        <span>{organization?.name}</span>
-                      </div>
-                      <div className="flex items-center gap-2 ml-auto">
-                        {organization?.id === orgStore.currentOrgId && (
-                          <IconCheck className="size-3.5 text-green-600" />
-                        )}
-                        <span className="text-xs text-muted-foreground capitalize">{member.role}</span>
-                      </div>
-                    </DropdownMenuItem>
-                  ))}
-                </DropdownMenuGroup>
-                <DropdownMenuSeparator />
-              </>
-            )}
-            {currentRole !== "member" && (
-              <>
-                <DropdownMenuGroup>
-                  <DropdownMenuItem onClick={() => setView("account")}>
-                    <IconUserCircle />
-                    Account
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setView("billing")}>
-                    <IconCreditCard />
-                    Billing
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setView("notifications")}>
-                    <IconNotification />
-                    Notifications
-                  </DropdownMenuItem>
-                </DropdownMenuGroup>
-                <DropdownMenuSeparator />
-              </>
-            )}
+            <DropdownMenuGroup>
+              <DropdownMenuItem onClick={() => setView("account")}>
+                <IconUserCircle />
+                Account
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setView("billing")}>
+                <IconCreditCard />
+                Billing
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setView("notifications")}>
+                <IconNotification />
+                Notifications
+              </DropdownMenuItem>
+            </DropdownMenuGroup>
+            <DropdownMenuSeparator />
             <DropdownMenuItem onClick={handleLogout}>
               <IconLogout />
               Log out

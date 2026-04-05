@@ -177,13 +177,6 @@ async function getAuthHeaders(): Promise<HeadersInit> {
   if (!user) return {}
   const token = await user.getIdToken()
   const headers: HeadersInit = { Authorization: `Bearer ${token}` }
-
-  // Add X-Organization-Id header if user has a current org
-  const orgId = useOrgStore.getState().currentOrgId
-  if (orgId) {
-    (headers as Record<string, string>)['X-Organization-Id'] = orgId
-  }
-
   return headers
 }
 
