@@ -1,6 +1,6 @@
 "use client"
 
-import { IconPhone } from "@tabler/icons-react"
+import { IconLayoutGrid, IconPhone } from "@tabler/icons-react"
 import {
   SidebarGroup,
   SidebarMenu,
@@ -15,6 +15,16 @@ export function NavCallHistory() {
   return (
     <SidebarGroup className="px-4 pt-1">
       <SidebarMenu>
+        <SidebarMenuItem>
+          <SidebarMenuButton
+            isActive={view === "dashboard" || view === "customer-detail"}
+            onClick={() => setView("dashboard")}
+            className="pl-4"
+          >
+            <IconLayoutGrid className="size-4" />
+            <span>Overview</span>
+          </SidebarMenuButton>
+        </SidebarMenuItem>
         <SidebarMenuItem>
           <SidebarMenuButton
             isActive={view === "calls"}

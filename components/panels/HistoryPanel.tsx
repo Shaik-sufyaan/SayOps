@@ -415,6 +415,7 @@ export function HistoryPanel() {
         emptyStateText="No past calls yet."
         defaultDatePreset="last30"
         showAgent
+        layout="table"
       />
     </div>
   )

@@ -29,6 +29,14 @@ import type {
   AdminConversationMessage,
   ExistingNumberAssignmentRequest,
   EvaNumberBinding,
+  CustomerDashboardResponse,
+  CustomerDashboardFilter,
+  CustomerDashboardSort,
+  CustomerDetail,
+  CustomerOwnerState,
+  CustomerManualStage,
+  CustomerDecisionStatus,
+  CustomerActionRequest,
 } from "@/lib/types"
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || process.env.AGENT_BACKEND_URL || "http://localhost:3001"
@@ -69,6 +77,11 @@ interface PaginationOptions {
 interface ConversationPageOptions extends PaginationOptions {
   agentId?: string
   scope?: 'me'
+}
+
+interface CustomerDashboardOptions extends PaginationOptions {
+  filter?: CustomerDashboardFilter
+  sort?: CustomerDashboardSort
 }
 
 function buildApiUrl(endpoint: string): string {
@@ -172,11 +185,17 @@ async function consumeChatStream(
 }
 
 /** Get auth headers for API calls. */
-async function getAuthHeaders(): Promise<HeadersInit> {
+async function getAuthHeaders(includeOrgHeader: boolean = true): Promise<HeadersInit> {
   const user = auth.currentUser
-  if (!user) return {}
+  const currentOrgId = useOrgStore.getState().currentOrgId
+  if (!user) {
+    return includeOrgHeader && currentOrgId ? { "X-Organization-Id": currentOrgId } : {}
+  }
   const token = await user.getIdToken()
   const headers: HeadersInit = { Authorization: `Bearer ${token}` }
+  if (includeOrgHeader && currentOrgId) {
+    headers["X-Organization-Id"] = currentOrgId
+  }
   return headers
 }
 
@@ -203,6 +222,27 @@ async function publicFetch<T>(endpoint: string, options?: RequestInit): Promise<
 
 async function apiFetch<T>(endpoint: string, options?: RequestInit): Promise<T> {
   const headers = await getAuthHeaders()
+  const url = buildApiUrl(endpoint)
+
+  const res = await fetch(url, {
+    ...options,
+    cache: options?.cache ?? "no-store",
+    headers: {
+      "Content-Type": "application/json",
+      ...headers,
+      ...options?.headers,
+    },
+  })
+
+  if (!res.ok) {
+    throw new Error(await parseErrorMessage(res))
+  }
+
+  return res.json()
+}
+
+async function apiFetchWithoutOrg<T>(endpoint: string, options?: RequestInit): Promise<T> {
+  const headers = await getAuthHeaders(false)
   const url = buildApiUrl(endpoint)
 
   const res = await fetch(url, {
@@ -266,12 +306,12 @@ function hydrateApiMessages<T extends {
 
 export async function fetchCurrentUser(): Promise<CurrentUserResponse> {
   // Get current user info from backend
-  const res = await apiFetch<CurrentUserResponse>("/user/me")
+  const res = await apiFetchWithoutOrg<CurrentUserResponse>("/user/me")
   return res
 }
 
 export async function fetchUser(): Promise<OrgMember> {
-  const res = await apiFetch<CurrentUserResponse>("/user/me")
+  const res = await apiFetchWithoutOrg<CurrentUserResponse>("/user/me")
   return res.user
 }
 
@@ -1214,6 +1254,46 @@ export async function fetchStats(): Promise<DashboardStats> {
       weekly_stats: { calls: 0, messages: 0 }
     }
   }
+}
+
+// ---- Customers ----
+
+export async function fetchCustomerDashboard(options: CustomerDashboardOptions = {}): Promise<CustomerDashboardResponse> {
+  const query = buildQueryString({
+    limit: options.limit,
+    offset: options.offset,
+    search: options.search?.trim() || undefined,
+    filter: options.filter,
+    sort: options.sort,
+  })
+  return apiFetch<CustomerDashboardResponse>(`/customers/dashboard${query}`)
+}
+
+export async function fetchCustomerDetail(customerId: string): Promise<CustomerDetail> {
+  return apiFetch<CustomerDetail>(`/customers/${encodeURIComponent(customerId)}`)
+}
+
+export async function updateCustomerOwnerState(
+  customerId: string,
+  payload: {
+    manualStage?: CustomerManualStage
+    decisionStatus?: CustomerDecisionStatus
+    notes?: string | null
+  }
+): Promise<CustomerOwnerState> {
+  const res = await apiFetch<{ ownerState: CustomerOwnerState }>(`/customers/${encodeURIComponent(customerId)}/owner-state`, {
+    method: "PATCH",
+    body: JSON.stringify(payload),
+  })
+  return res.ownerState
+}
+
+export async function runCustomerAction(customerId: string, payload: CustomerActionRequest): Promise<CustomerOwnerState> {
+  const res = await apiFetch<{ success: boolean; ownerState: CustomerOwnerState }>(`/customers/${encodeURIComponent(customerId)}/actions`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  })
+  return res.ownerState
 }
 
 // ---- Terms & Conditions ----
