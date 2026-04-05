@@ -87,7 +87,7 @@ function PanelContainerInner() {
         <DocumentsPanel />
       </Panel>
       <Panel active={view === "calls"} visited={visited.has("calls")}>
-        <HistoryPanel key={`calls-${currentOrgId ?? "default"}`} />
+        <HistoryPanel key="calls" />
       </Panel>
       <Panel active={view === "integrations"} visited={visited.has("integrations")}>
         <IntegrationsPanel />
