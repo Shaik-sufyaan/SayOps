@@ -168,12 +168,12 @@ export function CustomerDetailPanel({ customerId }: { customerId: string | null 
         <Card className="max-w-lg">
           <CardHeader>
             <CardTitle>No customer selected</CardTitle>
-            <CardDescription>Pick a customer from Overview to inspect their history and workflow state.</CardDescription>
+            <CardDescription>Pick a customer from Customer Data to inspect their history and workflow state.</CardDescription>
           </CardHeader>
           <CardContent>
-            <Button onClick={() => setView("dashboard")}>
+            <Button onClick={() => setView("customers")}>
               <IconArrowLeft className="mr-2 size-4" />
-              Back to Overview
+              Back to Customer Data
             </Button>
           </CardContent>
         </Card>
@@ -192,9 +192,9 @@ export function CustomerDetailPanel({ customerId }: { customerId: string | null 
   if (error || !detail) {
     return (
       <div className="flex flex-1 flex-col gap-4 p-4 md:gap-8 lg:p-8">
-        <Button variant="ghost" className="w-fit" onClick={() => setView("dashboard")}>
+        <Button variant="ghost" className="w-fit" onClick={() => setView("customers")}>
           <IconArrowLeft className="mr-2 size-4" />
-          Back to Overview
+          Back to Customer Data
         </Button>
         <Card>
           <CardHeader>
@@ -215,9 +215,9 @@ export function CustomerDetailPanel({ customerId }: { customerId: string | null 
   return (
     <div className="flex flex-1 flex-col gap-6 p-4 md:gap-8 lg:p-8">
       <div className="flex items-center justify-between gap-3">
-        <Button variant="ghost" onClick={() => setView("dashboard")}>
+        <Button variant="ghost" onClick={() => setView("customers")}>
           <IconArrowLeft className="mr-2 size-4" />
-          Overview
+          Customer Data
         </Button>
         <Button variant="outline" size="sm" onClick={() => void loadDetail()}>
           <IconRefresh className="mr-2 size-4" />

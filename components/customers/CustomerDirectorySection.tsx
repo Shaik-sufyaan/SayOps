@@ -150,7 +150,7 @@ export function CustomerDirectorySection() {
   }, [canManageCustomers, currentOrgId, deferredSearch, filter, page, sort])
 
   React.useEffect(() => {
-    if (view !== "dashboard") return
+    if (view !== "customers") return
     void loadCustomers()
   }, [loadCustomers, view])
 

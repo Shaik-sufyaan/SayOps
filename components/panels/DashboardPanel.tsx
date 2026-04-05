@@ -3,7 +3,6 @@
 import React, { useEffect, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { ChartAreaInteractive } from "@/components/chart-area-interactive"
-import { CustomerDirectorySection } from "@/components/customers/CustomerDirectorySection"
 import { SectionCards } from "@/components/section-cards"
 import { CallHistoryTable } from "@/components/call-history-table"
 import {
@@ -12,7 +11,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
 import { IconRobot, IconPlus } from "@tabler/icons-react"
 import { fetchAgents, fetchCalls, fetchStats, updateCurrentUserPhone } from "@/lib/api-client"
 import { Button } from "@/components/ui/button"
@@ -34,10 +32,6 @@ export function DashboardPanel() {
   const [calls, setCalls] = useState<CallRecord[]>([])
   const [stats, setStats] = useState<DashboardStats | null>(null)
   const [loading, setLoading] = useState(true)
-
-  const selectedAgent = agentId
-    ? agents.find((a) => a.id === agentId) || agents[0]
-    : agents[0]
 
   useEffect(() => {
     async function load() {
@@ -141,31 +135,8 @@ export function DashboardPanel() {
         </Card>
       )}
 
-      {selectedAgent && (
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="flex size-10 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-                  <IconRobot className="size-5" />
-                </div>
-                <div>
-                  <CardTitle>{selectedAgent.name}</CardTitle>
-                  <CardDescription className="font-mono text-xs">
-                    {selectedAgent.phone_number || "No phone number assigned"}
-                  </CardDescription>
-                </div>
-              </div>
-              <Badge variant={selectedAgent.is_active ? "default" : "secondary"}>
-                {selectedAgent.is_active ? "active" : "inactive"}
-              </Badge>
-            </div>
-          </CardHeader>
-        </Card>
-      )}
-
-      {stats && <SectionCards stats={stats} agents={agents} />}
-      {stats && <ChartAreaInteractive data={stats.messages_per_day ?? []} agents={agents} />}
+      {stats && <SectionCards stats={stats} />}
+      <ChartAreaInteractive calls={calls} />
       <CallHistoryTable
         calls={calls.slice(0, 5)}
         title="Recent Calls"
@@ -173,7 +144,6 @@ export function DashboardPanel() {
         emptyStateText="No recent calls yet."
         defaultDatePreset="last7"
       />
-      <CustomerDirectorySection />
     </div>
   )
 }
