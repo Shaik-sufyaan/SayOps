@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { ChartAreaInteractive } from "@/components/chart-area-interactive"
+import { CustomerDirectorySection } from "@/components/customers/CustomerDirectorySection"
 import { SectionCards } from "@/components/section-cards"
 import { CallHistoryTable } from "@/components/call-history-table"
 import {
@@ -16,12 +17,14 @@ import { IconRobot, IconPlus } from "@tabler/icons-react"
 import { fetchAgents, fetchCalls, fetchStats, updateCurrentUserPhone } from "@/lib/api-client"
 import { Button } from "@/components/ui/button"
 import { useViewParams } from "@/hooks/useViewParams"
+import { useOrgStore } from "@/stores/orgStore"
 import type { Agent, CallRecord, DashboardStats } from "@/lib/types"
 
 export function DashboardPanel() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const { setView } = useViewParams()
+  const currentOrgId = useOrgStore((state) => state.currentOrgId)
 
   const agentId = searchParams.get("agent") || ""
   const callerPhone = searchParams.get("phoneNumber") || ""
@@ -38,6 +41,7 @@ export function DashboardPanel() {
 
   useEffect(() => {
     async function load() {
+      setLoading(true)
       try {
         const [agentsData, statsData] = await Promise.all([
           fetchAgents(),
@@ -67,7 +71,7 @@ export function DashboardPanel() {
     }
 
     load()
-  }, [agentId])
+  }, [agentId, currentOrgId])
 
   useEffect(() => {
     if (!callerPhone) return
@@ -169,6 +173,7 @@ export function DashboardPanel() {
         emptyStateText="No recent calls yet."
         defaultDatePreset="last7"
       />
+      <CustomerDirectorySection />
     </div>
   )
 }

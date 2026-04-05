@@ -7,6 +7,7 @@ import { useViewParams } from "@/hooks/useViewParams"
 import { useAgentsStore } from "@/stores"
 import { Spinner } from "@/components/ui/spinner"
 import { TermsAndConditionsModal } from "@/components/TermsAndConditionsModal"
+import { DashboardPanel } from "./DashboardPanel"
 import { DocumentsPanel } from "./DocumentsPanel"
 import { HistoryPanel } from "./HistoryPanel"
 import { IntegrationsPanel } from "./IntegrationsPanel"
@@ -20,13 +21,14 @@ import { TokenUsagePanel } from "./TokenUsagePanel"
 import { AdminOrgsPanel } from "./AdminOrgsPanel"
 import { AdminOrgDetailPanel } from "./AdminOrgDetailPanel"
 import { PlatformHealthPanel } from "./PlatformHealthPanel"
+import { CustomerDetailPanel } from "./CustomerDetailPanel"
 
 function PanelContainerInner() {
-  const { view, agentId, orgId, setView } = useViewParams()
+  const { view, agentId, orgId, customerId, setView } = useViewParams()
   const { user, loading: authLoading, termsAccepted } = useAuth()
   const { agents, fetchAgents, setAgents } = useAgentsStore()
   const router = useRouter()
-  const [visited, setVisited] = useState<Set<string>>(new Set(["calls"]))
+  const [visited, setVisited] = useState<Set<string>>(new Set(["dashboard"]))
   const [agentsChecked, setAgentsChecked] = useState(false)
 
   useEffect(() => {
@@ -46,7 +48,7 @@ function PanelContainerInner() {
 
   useEffect(() => {
     if (!user || !agentsChecked) return
-    if (view === "calls" && agents.length === 0) {
+    if ((view === "dashboard" || view === "calls" || view === "customer-detail") && agents.length === 0) {
       setView("create-agent")
     }
   }, [user, agentsChecked, view, agents.length, setView])
@@ -57,6 +59,8 @@ function PanelContainerInner() {
       ? "agent"
       : normalizedView === "admin-org-detail"
         ? "admin-org-detail"
+        : normalizedView === "customer-detail"
+          ? "customer-detail"
         : normalizedView
     setVisited((prev) => (prev.has(key) ? prev : new Set(prev).add(key)))
   }, [view])
@@ -83,6 +87,9 @@ function PanelContainerInner() {
 
   return (
     <>
+      <Panel active={view === "dashboard"} visited={visited.has("dashboard")}>
+        <DashboardPanel />
+      </Panel>
       <Panel active={view === "documents"} visited={visited.has("documents")}>
         <DocumentsPanel />
       </Panel>
@@ -121,6 +128,9 @@ function PanelContainerInner() {
       </Panel>
       <Panel active={view === "platform-health"} visited={visited.has("platform-health")}>
         <PlatformHealthPanel />
+      </Panel>
+      <Panel active={view === "customer-detail"} visited={visited.has("customer-detail")}>
+        <CustomerDetailPanel customerId={customerId} />
       </Panel>
     </>
   )

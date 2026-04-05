@@ -298,6 +298,141 @@ export interface DashboardStats {
   }
 }
 
+export type CustomerManualStage = 'none' | 'follow_up_needed' | 'request_closed' | 'appointment_done'
+export type CustomerDecisionStatus = 'none' | 'approved' | 'denied'
+export type CustomerDashboardFilter = 'all' | 'attention' | 'approved' | 'denied'
+export type CustomerDashboardSort = 'last_call_desc' | 'last_call_asc' | 'name_asc' | 'name_desc'
+
+export interface CustomerQuickAction {
+  type: 'request_closed' | 'appointment_done'
+  label: string
+  taskId?: string | null
+  escalationId?: string | null
+  paymentId?: string | null
+}
+
+export interface CustomerDashboardEntry {
+  id: string
+  organizationId: string
+  name: string | null
+  phone: string | null
+  email: string | null
+  externalId: string
+  totalCalls: number
+  lastCallAt: string | null
+  lastCallSummary: string | null
+  lastConversationId: string | null
+  lastAgentName: string | null
+  openTaskCount: number
+  openEscalationCount: number
+  pendingAppointmentCount: number
+  pendingAppointmentNotStartedCount: number
+  pendingAppointmentInProgressCount: number
+  manualStage: CustomerManualStage
+  decisionStatus: CustomerDecisionStatus
+  notes: string | null
+  pendingStatusSummary: string
+  nextStepSummary: string | null
+  needsAttention: boolean
+  attentionRank: number | null
+  quickAction: CustomerQuickAction | null
+}
+
+export interface CustomerOwnerState {
+  organization_id: string
+  customer_id: string
+  manual_stage: CustomerManualStage
+  decision_status: CustomerDecisionStatus
+  notes: string | null
+  updated_by: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface CustomerConversationHistoryItem {
+  id: string
+  agentId: string
+  agentName: string
+  channel: string
+  status: string
+  startedAt: string
+  lastMessageAt: string | null
+  summary: string | null
+  hasTranscript: boolean
+  hasRecording: boolean
+  durationSeconds: number
+}
+
+export interface CustomerTaskItem {
+  id: string
+  sessionId: string
+  agentId: string
+  status: string
+  channel: string | null
+  dueAt: string | null
+  summary: string | null
+  resolution: string | null
+  handoffTo: string | null
+  payload: Record<string, unknown>
+  createdAt: string
+  updatedAt: string
+  closedAt: string | null
+}
+
+export interface CustomerEscalationItem {
+  id: string
+  agentId: string
+  status: string
+  reason: string
+  customerSummary: string
+  assignedTo: string | null
+  notificationPhone: string | null
+  createdAt: string
+  remindedAt: string | null
+  resolvedAt: string | null
+  expiresAt: string
+}
+
+export interface CustomerPaymentHistoryItem {
+  id: string
+  amount: number
+  currency: string
+  description: string | null
+  status: string
+  paymentUrl: string | null
+  paidAt: string | null
+  createdAt: string
+  fulfillmentId: string | null
+  fulfillmentType: string | null
+  fulfillmentStatus: string | null
+  appointmentTime: string | null
+  appointmentConfirmed: boolean
+  fulfillmentNotes: string | null
+}
+
+export interface CustomerDashboardResponse {
+  attentionCustomers: CustomerDashboardEntry[]
+  customers: CustomerDashboardEntry[]
+  total: number
+}
+
+export interface CustomerDetail {
+  customer: CustomerDashboardEntry
+  ownerState: CustomerOwnerState
+  conversations: CustomerConversationHistoryItem[]
+  tasks: CustomerTaskItem[]
+  escalations: CustomerEscalationItem[]
+  payments: CustomerPaymentHistoryItem[]
+}
+
+export interface CustomerActionRequest {
+  action: 'request_closed' | 'appointment_done' | 'follow_up' | 'approve' | 'deny'
+  taskId?: string
+  escalationId?: string
+  paymentId?: string
+  note?: string
+}
+
 // Stripe / Payments
 
 export interface StripeConnectAccount {

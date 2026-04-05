@@ -20,6 +20,7 @@ export type ViewId =
   | "admin-orgs"
   | "admin-org-detail"
   | "platform-health"
+  | "customer-detail"
 
 export function useViewParams() {
   const searchParams = useSearchParams()
@@ -27,22 +28,22 @@ export function useViewParams() {
   const pathname = usePathname()
 
   const rawView = searchParams.get("view") as ViewId | null
-  const normalizeView = (candidate: ViewId | null): Exclude<ViewId, "dashboard" | "history"> | "calls" => {
-    if (candidate === "dashboard" || candidate === "history" || candidate === null) {
-      return "calls"
-    }
+  const normalizeView = (candidate: ViewId | null): Exclude<ViewId, "history"> | "dashboard" => {
+    if (candidate === "history") return "calls"
+    if (candidate === null || candidate === "dashboard") return "dashboard"
     return candidate
   }
 
   const view = normalizeView(rawView)
   const agentId = searchParams.get("agentId")
   const orgId = searchParams.get("orgId")
+  const customerId = searchParams.get("customerId")
 
   useEffect(() => {
-    if (rawView !== "dashboard" && rawView !== "history") return
+    if (rawView !== "history") return
 
     const p = new URLSearchParams(searchParams.toString())
-    p.delete("view")
+    p.set("view", "calls")
     const next = p.toString()
     router.replace(next ? `${pathname}?${next}` : pathname, { scroll: false })
   }, [pathname, rawView, router, searchParams])
@@ -51,7 +52,7 @@ export function useViewParams() {
     (newView: ViewId, params?: Record<string, string>) => {
       const normalizedView = normalizeView(newView)
       const p = new URLSearchParams(searchParams.toString())
-      if (normalizedView === "calls") {
+      if (normalizedView === "dashboard") {
         p.delete("view")
       } else {
         p.set("view", normalizedView)
@@ -60,6 +61,8 @@ export function useViewParams() {
       if (normalizedView !== "agent") p.delete("agentId")
       // Clear org-specific params when switching away from admin-org-detail
       if (normalizedView !== "admin-org-detail") p.delete("orgId")
+      // Clear customer-specific params when switching away from customer detail
+      if (normalizedView !== "customer-detail") p.delete("customerId")
       // Set additional params (e.g., agentId for agent view, orgId for admin-org-detail)
       if (params) {
         Object.entries(params).forEach(([k, v]) => p.set(k, v))
@@ -70,5 +73,5 @@ export function useViewParams() {
     [searchParams, router, pathname]
   )
 
-  return { view, agentId, orgId, setView }
+  return { view, agentId, orgId, customerId, setView }
 }
