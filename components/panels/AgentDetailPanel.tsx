@@ -54,7 +54,7 @@ export function AgentDetailPanel({ agentId }: AgentDetailPanelProps) {
       .then((data) => setAgent(data))
       .catch((err) => {
         console.error("Failed to fetch agent:", err)
-        setView("dashboard")
+        setView("calls")
       })
       .finally(() => setLoading(false))
   }, [agentId, setView])
@@ -79,7 +79,7 @@ export function AgentDetailPanel({ agentId }: AgentDetailPanelProps) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[400px] gap-4">
         <p className="text-muted-foreground">Agent not found.</p>
-        <button onClick={() => setView("dashboard")}>Go Back</button>
+        <button onClick={() => setView("calls")}>Go Back</button>
       </div>
     )
   }

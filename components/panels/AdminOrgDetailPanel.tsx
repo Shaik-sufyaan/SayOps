@@ -288,7 +288,7 @@ export function AdminOrgDetailPanel({ orgId }: AdminOrgDetailPanelProps) {
   const traceRequestRef = React.useRef(0)
 
   React.useEffect(() => {
-    if (!isPlatformAdmin) setView("dashboard")
+    if (!isPlatformAdmin) setView("calls")
   }, [isPlatformAdmin, setView])
 
   const loadAgents = React.useCallback(async () => {

@@ -10,6 +10,7 @@ import { Spinner } from "@/components/ui/spinner"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { useViewParams } from "@/hooks/useViewParams"
 import {
   fetchUsageBreakdown,
   fetchUsageDaily,
@@ -18,6 +19,7 @@ import {
   type UsageDailyRow,
   type UsageSummaryRow,
 } from "@/lib/api-client"
+import { useOrgStore } from "@/stores/orgStore"
 
 function toNumber(value: number | string | null | undefined) {
   if (typeof value === "number") return value
@@ -47,14 +49,22 @@ function formatDate(value: string) {
 }
 
 export function TokenUsagePanel() {
+  const { setView } = useViewParams()
+  const currentRole = useOrgStore((state) => state.currentRole())
   const [loading, setLoading] = React.useState(true)
   const [period, setPeriod] = React.useState<"month" | "day">("month")
   const [daysBack, setDaysBack] = React.useState("7")
   const [summaryRows, setSummaryRows] = React.useState<UsageSummaryRow[]>([])
   const [dailyRows, setDailyRows] = React.useState<UsageDailyRow[]>([])
   const [providerRows, setProviderRows] = React.useState<UsageBreakdownRow[]>([])
+  const canViewTokenUsage = currentRole === "admin"
 
   const loadData = React.useCallback(async () => {
+    if (!canViewTokenUsage) {
+      setLoading(false)
+      return
+    }
+
     setLoading(true)
     try {
       const range = Math.max(1, Math.min(90, Number(daysBack) || 7))
@@ -74,9 +84,15 @@ export function TokenUsagePanel() {
     } finally {
       setLoading(false)
     }
-  }, [daysBack, period])
+  }, [canViewTokenUsage, daysBack, period])
 
   React.useEffect(() => {
+    if (!canViewTokenUsage) {
+      setLoading(false)
+      setView("calls")
+      return
+    }
+
     loadData().catch(() => setLoading(false))
 
     const interval = setInterval(() => loadData().catch(() => {}), 30_000)
@@ -87,7 +103,7 @@ export function TokenUsagePanel() {
       clearInterval(interval)
       document.removeEventListener("visibilitychange", onVisible)
     }
-  }, [loadData])
+  }, [canViewTokenUsage, loadData, setView])
 
   const totals = React.useMemo(() => {
     return summaryRows.reduce(
@@ -100,6 +116,8 @@ export function TokenUsagePanel() {
       { tokens: 0, cost: 0, events: 0 }
     )
   }, [summaryRows])
+
+  if (!canViewTokenUsage) return null
 
   return (
     <div className="flex flex-col gap-4 p-3 sm:gap-6 sm:p-4 lg:p-6">
