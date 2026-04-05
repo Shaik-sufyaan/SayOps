@@ -10,6 +10,7 @@ import { Spinner } from "@/components/ui/spinner"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { useAuth } from "@/lib/auth-context"
 import { useViewParams } from "@/hooks/useViewParams"
 import {
   fetchUsageBreakdown,
@@ -49,6 +50,7 @@ function formatDate(value: string) {
 }
 
 export function TokenUsagePanel() {
+  const { isPlatformAdmin } = useAuth()
   const { setView } = useViewParams()
   const currentRole = useOrgStore((state) => state.currentRole())
   const [loading, setLoading] = React.useState(true)
@@ -57,7 +59,8 @@ export function TokenUsagePanel() {
   const [summaryRows, setSummaryRows] = React.useState<UsageSummaryRow[]>([])
   const [dailyRows, setDailyRows] = React.useState<UsageDailyRow[]>([])
   const [providerRows, setProviderRows] = React.useState<UsageBreakdownRow[]>([])
-  const canViewTokenUsage = currentRole === "admin"
+  const canViewTokenUsage =
+    isPlatformAdmin || currentRole === "owner" || currentRole === "admin"
 
   const loadData = React.useCallback(async () => {
     if (!canViewTokenUsage) {
