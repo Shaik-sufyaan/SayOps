@@ -173,7 +173,7 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
                 <SidebarMenuItem>
                   <div className="flex items-center gap-2">
                     <SidebarMenuButton
-                      isActive={view === "dashboard" || view === "customer-detail"}
+                      isActive={view === "dashboard"}
                       onClick={() => setView("dashboard")}
                       className="h-auto flex-1 !p-0 hover:bg-transparent active:bg-transparent data-[active=true]:bg-transparent"
                     >

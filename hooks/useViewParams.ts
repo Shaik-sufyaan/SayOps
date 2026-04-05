@@ -5,6 +5,7 @@ import { useCallback, useEffect } from "react"
 
 export type ViewId =
   | "dashboard"
+  | "customers"
   | "documents"
   | "calls"
   | "history"

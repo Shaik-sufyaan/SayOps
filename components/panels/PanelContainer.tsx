@@ -22,6 +22,7 @@ import { AdminOrgsPanel } from "./AdminOrgsPanel"
 import { AdminOrgDetailPanel } from "./AdminOrgDetailPanel"
 import { PlatformHealthPanel } from "./PlatformHealthPanel"
 import { CustomerDetailPanel } from "./CustomerDetailPanel"
+import { CustomersPanel } from "./CustomersPanel"
 
 function PanelContainerInner() {
   const { view, agentId, orgId, customerId, setView } = useViewParams()
@@ -48,7 +49,7 @@ function PanelContainerInner() {
 
   useEffect(() => {
     if (!user || !agentsChecked) return
-    if ((view === "dashboard" || view === "calls" || view === "customer-detail") && agents.length === 0) {
+    if ((view === "dashboard" || view === "calls" || view === "customers" || view === "customer-detail") && agents.length === 0) {
       setView("create-agent")
     }
   }, [user, agentsChecked, view, agents.length, setView])
@@ -95,6 +96,9 @@ function PanelContainerInner() {
       </Panel>
       <Panel active={view === "calls"} visited={visited.has("calls")}>
         <HistoryPanel key="calls" />
+      </Panel>
+      <Panel active={view === "customers"} visited={visited.has("customers")}>
+        <CustomersPanel />
       </Panel>
       <Panel active={view === "integrations"} visited={visited.has("integrations")}>
         <IntegrationsPanel />

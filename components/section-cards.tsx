@@ -1,62 +1,31 @@
-import { IconTrendingUp, IconPhone } from "@tabler/icons-react"
-
-import { Badge } from "@/components/ui/badge"
 import {
   Card,
-  CardAction,
   CardDescription,
-  CardFooter,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
-import type { Agent, DashboardStats } from "@/lib/types"
+import type { DashboardStats } from "@/lib/types"
 
-export function SectionCards({ stats, agents }: { stats: DashboardStats; agents: Agent[] }) {
+export function SectionCards({ stats }: { stats: DashboardStats }) {
   return (
-    <div className="*:data-[slot=card]:from-primary/5 *:data-[slot=card]:to-card dark:*:data-[slot=card]:bg-card grid grid-cols-1 gap-4 *:data-[slot=card]:bg-gradient-to-t *:data-[slot=card]:shadow-xs @xl/main:grid-cols-2">
-      <Card className="@container/card">
-        <CardHeader>
+    <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+      <Card>
+        <CardHeader className="gap-2 p-5">
           <CardDescription>Total Calls</CardDescription>
-          <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
+          <CardTitle className="text-3xl font-semibold tabular-nums">
             {stats.total_calls.toLocaleString()}
           </CardTitle>
-          <CardAction>
-            <Badge variant="outline">
-              <IconTrendingUp />
-              All time
-            </Badge>
-          </CardAction>
+          <CardDescription>All-time calls across your workspace.</CardDescription>
         </CardHeader>
-        <CardFooter className="flex-col items-start gap-1.5 text-sm">
-          <div className="line-clamp-1 flex gap-2 font-medium">
-            Calls handled across all agents <IconPhone className="size-4" />
-          </div>
-          <div className="text-muted-foreground">
-            {agents.length} agent{agents.length !== 1 ? "s" : ""} active
-          </div>
-        </CardFooter>
       </Card>
-      <Card className="@container/card">
-        <CardHeader>
+      <Card>
+        <CardHeader className="gap-2 p-5">
           <CardDescription>Calls Today</CardDescription>
-          <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
+          <CardTitle className="text-3xl font-semibold tabular-nums">
             {stats.calls_today.toLocaleString()}
           </CardTitle>
-          <CardAction>
-            <Badge variant="outline">
-              <IconTrendingUp />
-              Today
-            </Badge>
-          </CardAction>
+          <CardDescription>Calls started in the last 24 hours.</CardDescription>
         </CardHeader>
-        <CardFooter className="flex-col items-start gap-1.5 text-sm">
-          <div className="line-clamp-1 flex gap-2 font-medium">
-            Calls handled today <IconTrendingUp className="size-4" />
-          </div>
-          <div className="text-muted-foreground">
-            Across all agents
-          </div>
-        </CardFooter>
       </Card>
     </div>
   )

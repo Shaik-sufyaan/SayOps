@@ -29,23 +29,41 @@ import {
   ToggleGroup,
   ToggleGroupItem,
 } from "@/components/ui/toggle-group"
-import type { Agent } from "@/lib/types"
+import type { CallRecord } from "@/lib/types"
 
-// Generate colors for dynamic agents
-const COLORS = [
-  "var(--primary)",
-  "var(--chart-2)",
-  "var(--chart-3)",
-  "var(--chart-4)",
-  "var(--chart-5)",
-]
+function formatDayKey(value: Date) {
+  return value.toISOString().split("T")[0] ?? ""
+}
+
+function buildDailyCallVolume(calls: CallRecord[]) {
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+
+  const rows: { date: string; calls: number }[] = []
+  const counts = new Map<string, number>()
+
+  for (const call of calls) {
+    const timestamp = new Date(call.timestamp)
+    if (Number.isNaN(timestamp.getTime())) continue
+    timestamp.setHours(0, 0, 0, 0)
+    const key = formatDayKey(timestamp)
+    counts.set(key, (counts.get(key) ?? 0) + 1)
+  }
+
+  for (let offset = 29; offset >= 0; offset -= 1) {
+    const date = new Date(today)
+    date.setDate(today.getDate() - offset)
+    const key = formatDayKey(date)
+    rows.push({ date: key, calls: counts.get(key) ?? 0 })
+  }
+
+  return rows
+}
 
 export function ChartAreaInteractive({
-  data,
-  agents,
+  calls,
 }: {
-  data: { date: string; [key: string]: string | number }[]
-  agents: Agent[]
+  calls: CallRecord[]
 }) {
   const isMobile = useIsMobile()
   const [timeRange, setTimeRange] = React.useState("30d")
@@ -56,18 +74,16 @@ export function ChartAreaInteractive({
     }
   }, [isMobile])
 
-  // Build chart config dynamically from agents
   const chartConfig: ChartConfig = {
-    calls: { label: "Calls" },
+    calls: {
+      label: "Calls",
+      color: "var(--primary)",
+    },
   }
-  agents.forEach((agent, i) => {
-    chartConfig[agent.name] = {
-      label: agent.name,
-      color: COLORS[i % COLORS.length],
-    }
-  })
 
-  const filteredData = (data ?? []).filter((item) => {
+  const dailyData = React.useMemo(() => buildDailyCallVolume(calls), [calls])
+
+  const filteredData = dailyData.filter((item) => {
     const date = new Date(item.date)
     const now = new Date()
     let daysToSubtract = 30
@@ -83,10 +99,7 @@ export function ChartAreaInteractive({
       <CardHeader>
         <CardTitle>Call Volume</CardTitle>
         <CardDescription>
-          <span className="hidden @[540px]/card:block">
-            Peak call volume timeline across agents
-          </span>
-          <span className="@[540px]/card:hidden">Call volume</span>
+          Daily call counts for your workspace.
         </CardDescription>
         <CardAction>
           <ToggleGroup
@@ -123,68 +136,69 @@ export function ChartAreaInteractive({
         </CardAction>
       </CardHeader>
       <CardContent className="px-2 pt-4 sm:px-6 sm:pt-6">
-        <ChartContainer
-          config={chartConfig}
-          className="aspect-auto h-[250px] w-full"
-        >
-          <AreaChart data={filteredData}>
-            <defs>
-              {agents.map((agent, i) => (
-                <linearGradient key={agent.id} id={`fill-${agent.name}`} x1="0" y1="0" x2="0" y2="1">
+        {filteredData.some((item) => item.calls > 0) ? (
+          <ChartContainer
+            config={chartConfig}
+            className="aspect-auto h-[250px] w-full"
+          >
+            <AreaChart data={filteredData}>
+              <defs>
+                <linearGradient id="fill-calls" x1="0" y1="0" x2="0" y2="1">
                   <stop
                     offset="5%"
-                    stopColor={COLORS[i % COLORS.length]}
+                    stopColor="var(--primary)"
                     stopOpacity={1.0}
                   />
                   <stop
                     offset="95%"
-                    stopColor={COLORS[i % COLORS.length]}
+                    stopColor="var(--primary)"
                     stopOpacity={0.1}
                   />
                 </linearGradient>
-              ))}
-            </defs>
-            <CartesianGrid vertical={false} />
-            <XAxis
-              dataKey="date"
-              tickLine={false}
-              axisLine={false}
-              tickMargin={8}
-              minTickGap={32}
-              tickFormatter={(value) => {
-                const date = new Date(value)
-                return date.toLocaleDateString("en-US", {
-                  month: "short",
-                  day: "numeric",
-                })
-              }}
-            />
-            <ChartTooltip
-              cursor={false}
-              content={
-                <ChartTooltipContent
-                  labelFormatter={(value) => {
-                    return new Date(value).toLocaleDateString("en-US", {
-                      month: "short",
-                      day: "numeric",
-                    })
-                  }}
-                  indicator="dot"
-                />
-              }
-            />
-            {agents.map((agent, i) => (
-              <Area
-                key={agent.id}
-                dataKey={agent.name}
-                type="natural"
-                fill={`url(#fill-${agent.name})`}
-                stroke={COLORS[i % COLORS.length]}
-                stackId="a"
+              </defs>
+              <CartesianGrid vertical={false} />
+              <XAxis
+                dataKey="date"
+                tickLine={false}
+                axisLine={false}
+                tickMargin={8}
+                minTickGap={32}
+                tickFormatter={(value) => {
+                  const date = new Date(value)
+                  return date.toLocaleDateString("en-US", {
+                    month: "short",
+                    day: "numeric",
+                  })
+                }}
               />
-            ))}
-          </AreaChart>
-        </ChartContainer>
+              <ChartTooltip
+                cursor={false}
+                content={
+                  <ChartTooltipContent
+                    labelFormatter={(value) => {
+                      return new Date(value).toLocaleDateString("en-US", {
+                        month: "short",
+                        day: "numeric",
+                      })
+                    }}
+                    indicator="dot"
+                  />
+                }
+              />
+              <Area
+                dataKey="calls"
+                type="natural"
+                fill="url(#fill-calls)"
+                stroke="var(--primary)"
+                strokeWidth={2}
+              />
+            </AreaChart>
+          </ChartContainer>
+        ) : (
+          <div className="flex h-[250px] items-center justify-center rounded-xl border border-dashed text-sm text-muted-foreground">
+            No call activity yet for the selected range.
+          </div>
+        )}
       </CardContent>
     </Card>
   )
