@@ -76,12 +76,12 @@ export function useLiveCallsFeed(): {
   const [connectionState, setConnectionState] = React.useState<LiveCallsConnectionState>("connecting")
   const [error, setError] = React.useState<string | null>(null)
 
-  const applyEvent = React.useEffectEvent((event: LiveCallEvent) => {
+  const applyEvent = React.useCallback((event: LiveCallEvent) => {
     React.startTransition(() => {
       setSessions((current) => applyLiveCallEvent(current, event))
       setError(null)
     })
-  })
+  }, [])
 
   React.useEffect(() => {
     if (!currentOrgId) {
