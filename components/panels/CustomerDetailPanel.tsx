@@ -398,13 +398,13 @@ export function CustomerDetailPanel({ customerId }: { customerId: string | null 
 
         <Card>
           <CardHeader>
-            <CardTitle>Escalations</CardTitle>
-            <CardDescription>Human follow-up requests created from customer conversations.</CardDescription>
+            <CardTitle>Human Handoffs</CardTitle>
+            <CardDescription>Human handoff requests created from customer conversations.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
             {detail.escalations.length === 0 ? (
               <div className="rounded-xl border border-dashed p-4 text-sm text-muted-foreground">
-                No escalations found for this customer.
+                No human handoffs found for this customer.
               </div>
             ) : (
               detail.escalations.map((escalation) => (

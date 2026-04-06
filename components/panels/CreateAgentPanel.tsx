@@ -99,7 +99,7 @@ export function CreateAgentPanel() {
       { id: "docs", title: "Upload docs for this agent.", optional: true },
       { id: "policies", title: "What policies should the agent follow?", optional: false },
       { id: "tone", title: "What tone/voice should the agent use?", optional: false },
-      { id: "escalation", title: "When should this escalate to a human?", optional: false },
+      { id: "escalation", title: "When should this hand off to a human?", optional: false },
       { id: "additional", title: "Any additional instructions?", optional: true },
     ],
     []
@@ -408,11 +408,11 @@ export function CreateAgentPanel() {
 
             {currentStep === 6 && (
               <div className="space-y-2">
-                <Label htmlFor="escalation-rules">Escalation Rules</Label>
+                <Label htmlFor="escalation-rules">Human Handoff Rules</Label>
                 <Textarea
                   id="escalation-rules"
                   rows={6}
-                  placeholder="Define when to hand off to a human..."
+                  placeholder={"Define when to hand off to a human, and include the exact phone number in a machine-usable format like 4705995159 or +14705995159."}
                   value={escalationRules}
                   onChange={(e) => setEscalationRules(e.target.value)}
                 />

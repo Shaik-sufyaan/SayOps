@@ -387,7 +387,7 @@ export function AgentSettingsForm({ agent }: { agent: Agent }) {
                     />
                   </FormControl>
                   <FormDescription>
-                    Define the agent's persona, rules, and core logic.
+                    Define the agent's persona, rules, and core logic. If this agent needs live human handoff, include the exact phone number in digits like 4705995159 or +14705995159 so the model can pass it directly to the handoff tool.
                   </FormDescription>
                   <FormMessage />
                 </FormItem>

@@ -218,7 +218,7 @@ export function CustomerDirectorySection() {
             <div>
               <CardTitle className="text-lg">Top Customers Needing Help</CardTitle>
               <CardDescription>
-                Ranked by unresolved escalations, open follow-up work, and upcoming appointments.
+                Ranked by unresolved human handoffs, open follow-up work, and upcoming appointments.
               </CardDescription>
             </div>
           </div>
