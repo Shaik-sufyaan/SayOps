@@ -26,11 +26,12 @@ import { CustomersPanel } from "./CustomersPanel"
 function PanelContainerInner() {
   const { view, agentId, orgId, customerId, setView } = useViewParams()
   const { user, loading: authLoading, termsAccepted, isPlatformAdmin, canManageOrganization } = useAuth()
-  const { agents, fetchAgents, setAgents } = useAgentsStore()
+  const { agents, error: agentsError, fetchAgents, setAgents } = useAgentsStore()
   const router = useRouter()
   const [visited, setVisited] = useState<Set<string>>(new Set(["calls"]))
   const [agentsChecked, setAgentsChecked] = useState(false)
   const canViewTokenUsage = canManageOrganization || isPlatformAdmin
+  const canCreateAgent = canManageOrganization || isPlatformAdmin
   const effectiveView = view === "token-usage" && !canViewTokenUsage ? "calls" : view
 
   useEffect(() => {
@@ -50,16 +51,27 @@ function PanelContainerInner() {
 
   useEffect(() => {
     if (!user || !agentsChecked) return
-    if ((effectiveView === "calls" || effectiveView === "customers" || effectiveView === "customer-detail") && agents.length === 0) {
+    if (
+      canCreateAgent &&
+      !agentsError &&
+      (effectiveView === "calls" || effectiveView === "customers" || effectiveView === "customer-detail") &&
+      agents.length === 0
+    ) {
       setView("create-agent")
     }
-  }, [user, agentsChecked, effectiveView, agents.length, setView])
+  }, [user, agentsChecked, canCreateAgent, effectiveView, agents.length, agentsError, setView])
 
   useEffect(() => {
     if (view === "token-usage" && !canViewTokenUsage) {
       setView("calls")
     }
   }, [canViewTokenUsage, setView, view])
+
+  useEffect(() => {
+    if (view === "create-agent" && !canCreateAgent) {
+      setView("calls")
+    }
+  }, [canCreateAgent, setView, view])
 
   useEffect(() => {
     const normalizedView = view === "settings" ? "account" : view

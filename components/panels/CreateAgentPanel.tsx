@@ -87,6 +87,7 @@ export function CreateAgentPanel() {
   const [files, setFiles] = useState<File[]>([])
   const [isCreating, setIsCreating] = useState(false)
   const [creationStatus, setCreationStatus] = useState("")
+  const [creationError, setCreationError] = useState("")
 
   const [showSuccess, setShowSuccess] = useState(false)
   const [createdAgent, setCreatedAgent] = useState<Agent | null>(null)
@@ -198,6 +199,7 @@ export function CreateAgentPanel() {
     }
 
     setIsCreating(true)
+    setCreationError("")
     setCreationStatus(files.length > 0 ? "Uploading documents..." : "Starting agent creation...")
 
     try {
@@ -233,7 +235,10 @@ export function CreateAgentPanel() {
       clearDraft()
       toast.success("Agent created successfully!")
     } catch (err: any) {
-      toast.error(err.message || "Failed to create agent")
+      const message = err?.message || "Failed to create agent"
+      setCreationStatus("")
+      setCreationError(message)
+      toast.error(message)
     } finally {
       setIsCreating(false)
     }
@@ -435,6 +440,12 @@ export function CreateAgentPanel() {
             {isCreating && creationStatus ? (
               <div className="rounded-lg border bg-muted/50 px-3 py-2 text-sm text-muted-foreground">
                 {creationStatus}
+              </div>
+            ) : null}
+
+            {!isCreating && creationError ? (
+              <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+                {creationError}
               </div>
             ) : null}
 
